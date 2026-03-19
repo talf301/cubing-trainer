@@ -1,42 +1,45 @@
-# Phase 2: Solve Recording + CFOP Segmentation
+# Phase 2: Scrambles + Solve Detection
 
 ## Context
-With reliable cube state in place, this phase adds solve detection and the ability to
-segment a completed solve into its CFOP phases with per-phase timing.
+With cube connectivity in place, this phase adds scramble generation, scramble state
+verification, solve timing, and basic solve recording.
 
 ## Depends on
 Phase 1 (Bluetooth + Cube State)
 
 ## Goals
-Detect solve start and end automatically, record the full move sequence with timestamps,
-and segment the solve into Cross / F2L / OLL / PLL phases. Store solves locally.
+Generate a scramble, detect when the user has applied it to the cube, start timing on
+the first move after scramble is verified, detect when the cube is solved, and record
+the solve with its move sequence and timestamps.
 
 ## Acceptance criteria
-- [ ] Solve start is detected automatically (cube is in scrambled state, first move made)
-- [ ] Solve end is detected automatically (cube reaches solved state)
+- [ ] Scrambles are generated using cubing.js `randomScrambleForEvent("333")`
+- [ ] Scramble is displayed to the user
+- [ ] App detects when the physical cube state matches the expected scrambled state
+- [ ] Timer starts automatically on the first move after scramble state is verified
+- [ ] Timer stops automatically when the cube reaches solved state
 - [ ] Full move sequence is recorded with per-move timestamps
-- [ ] Total solve time is accurate (comparable to a stackmat timer)
-- [ ] Solve is segmented into Cross / F2L / OLL / PLL with per-phase split times
-- [ ] Phase boundaries are detected correctly: Cross done = bottom layer cross solved;
-      F2L done = first two layers solved; OLL done = top face solved; PLL done = cube solved
-- [ ] Solves are persisted to IndexedDB and survive page reload
-- [ ] A solve history list renders completed solves with total time and phase splits
-- [ ] Unit tests cover phase boundary detection logic
+- [ ] Total solve time is accurate
+- [ ] Solves are persisted to IndexedDB via idb and survive page reload
+- [ ] A solve history list renders completed solves with total time
+- [ ] Unit tests cover scramble state matching and solve detection logic
 
 ## Out of scope
-- Case recognition (OLL/PLL/F2L cases) — that's Phase 3
-- Spaced repetition or training UI — that's Phase 4
-- Scramble generation or scramble validation
+- CFOP phase segmentation — that's Phase 3
+- Case recognition — that's Phase 4
 - DNF/+2 penalty handling (can be added later)
+- Manual timer mode (without smart cube)
 
 ## Key technical notes
-- Phase boundary detection is purely state-based via cubing.js — check against known
-  solved patterns for cross, F2L pairs, OLL, full solve. Not move-count based.
-- The data model for a stored solve should be designed with Phase 3 in mind:
-  it needs to carry enough information for case recognition to be run later or retroactively.
-  Store the full move sequence + timestamps, not just split times.
-- IndexedDB wrapper: keep it thin. Avoid pulling in Dexie or a full ORM unless the
-  schema gets complex enough to justify it — write an ADR if you add a dependency here.
+- Scramble state verification: apply the scramble algorithm to a solved KPuzzle state
+  to get the expected state, then compare against the physical cube's current state.
+  This must handle the fact that the user may have the cube in any orientation.
+- "First move after scramble verified" is the timer start trigger — not scramble completion
+  itself, since the user may pause between finishing the scramble and starting the solve.
+- The data model for a stored solve should carry the full move sequence + timestamps,
+  not just total time. Phase 3 needs this for retroactive segmentation.
+- IndexedDB schema: design with future phases in mind (phase splits, case labels)
+  but only populate what this phase produces.
 
 ## Status
 backlog

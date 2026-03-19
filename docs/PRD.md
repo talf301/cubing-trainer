@@ -1,20 +1,20 @@
 # acubemy — Product Requirements Document
 
 ## What this is
-A personal speedcubing training tool. A smart cube connects via Bluetooth, solves are recorded and automatically segmented into CFOP phases (Cross, F2L, OLL, PLL). The tool recognizes specific OLL/PLL cases and F2L pair cases, and uses spaced repetition to surface weak cases for targeted drilling.
+A personal speedcubing training tool. A smart cube connects via Bluetooth, solves are recorded and automatically segmented into CFOP phases (Cross, F2L, OLL, PLL). The tool recognizes specific OLL/PLL cases and F2L pair cases, and uses structured training to surface weak cases for targeted drilling.
 
 This is a local, offline-first, single-user training tool. No accounts, no social features, no server-side storage, no community data.
 
 ## What done looks like
-- Smart cube connects reliably on iOS via Capacitor/CoreBluetooth and on desktop via Web Bluetooth
+- Smart cube connects reliably in desktop Chrome via Web Bluetooth
+- Scrambles are generated and the app detects when the scramble has been applied
 - Solves are recorded, timed, and stored locally
 - Solves are automatically segmented into Cross / F2L / OLL / PLL phases with per-phase timing
 - OLL cases (57) and PLL cases (21) are recognized and labelled correctly
 - F2L pair cases are recognized (stretch goal)
-- Spaced repetition scheduler surfaces weak cases for drilling based on solve history
-- Training session UI lets you drill a specific case or a surfaced weak case set
+- Training experience surfaces weak cases for drilling based on solve history
 - All data lives in local storage / IndexedDB — no backend dependency for core functionality
-- iOS deployment works via Capacitor wrapping the web app
+- iOS deployment via Capacitor is a future add-on (not required for v1)
 
 ## Out of scope (permanently)
 - User accounts or authentication
@@ -24,21 +24,31 @@ This is a local, offline-first, single-user training tool. No accounts, no socia
 - Support for non-CFOP methods (for now)
 
 ## Platform targets
-- Primary: iOS via Capacitor (CoreBluetooth)
-- Secondary: Desktop web via Web Bluetooth (Chrome/Edge)
+- Primary: Desktop web via Web Bluetooth (Chrome/Edge)
+- Future: iOS via Capacitor (CoreBluetooth) — designed for but not built initially
 - Non-goal: Firefox, Safari desktop (no Web Bluetooth support)
 
+## Tech stack
+- **UI:** React + TypeScript
+- **Build:** Vite
+- **Testing:** Vitest
+- **Styling:** Tailwind CSS
+- **Persistence:** IndexedDB via `idb`
+- **Cube logic:** cubing.js (state management, scrambles, bluetooth, case recognition)
+- **Future native wrapper:** Capacitor
+
 ## Key external dependencies
-- `cubing.js` — cube state, alg parsing, case recognition
-- `gan-web-bluetooth` or `cubing.js` bluetooth module — smart cube BT connectivity
-- Capacitor — iOS native wrapper
-- Local persistence: IndexedDB (via a thin wrapper, not a full ORM)
+- `cubing.js` — cube state, alg parsing, bluetooth communication, scramble generation, case recognition
+- `idb` — thin IndexedDB promise wrapper
+- Capacitor (future) — iOS native wrapper
 
 ## Phases
-1. **Bluetooth + cube state** — connect to cube, receive move events, maintain accurate cube state
-2. **Solve recording + CFOP segmentation** — detect solve start/end, segment into phases, record timing
-3. **Case recognition** — identify OLL/PLL cases; F2L pair recognition as stretch
-4. **Spaced repetition + training UI** — scheduler, drill mode, weak case surfacing, analytics
+0. **Project scaffolding** — React, Vite, Vitest, Tailwind, TypeScript, directory structure
+1. **Bluetooth + cube state** — connect to cube via Web Bluetooth, receive move events, maintain accurate cube state
+2. **Scrambles + solve detection** — generate scrambles, detect scrambled state reached, start/stop timer, record solves
+3. **CFOP segmentation** — detect Cross/F2L/OLL/PLL phase boundaries during a solve, per-phase split times
+4. **Case recognition** — identify OLL/PLL cases from cube state at phase boundaries
+5. **Training experience** — structured training, weak case surfacing, drill mode (details TBD)
 
 ## Architectural constraints
 See `docs/invariants.md`.

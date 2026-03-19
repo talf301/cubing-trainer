@@ -10,9 +10,10 @@ Before starting any work, read in this order:
 If working on a specific phase, read that phase brief fully before writing any code.
 
 ## Key dependencies
-- `cubing.js` — cube state management, alg parsing, case recognition
-- `gan-web-bluetooth` or `cubing.js` bluetooth module — smart cube connectivity
-- Capacitor — iOS wrapper for native CoreBluetooth access
+- `cubing.js` — cube state, alg parsing, bluetooth, scrambles, case recognition (see ADR-001)
+- `idb` — thin IndexedDB promise wrapper
+- React + Vite + Tailwind CSS — UI and build
+- Vitest — testing
 - TypeScript throughout
 
 ## Commands

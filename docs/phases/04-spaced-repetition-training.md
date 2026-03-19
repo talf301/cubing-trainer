@@ -1,39 +1,44 @@
-# Phase 4: Spaced Repetition + Training UI
+# Phase 4: Case Recognition
 
 ## Context
-Final phase. With case recognition in place, this phase builds the spaced repetition
-scheduler and the training UI for targeted case drilling.
+With solves segmented into CFOP phases, this phase adds recognition of specific OLL/PLL
+cases from cube state at the phase boundary, and labels each solve with its cases.
 
 ## Depends on
-Phase 3 (Case Recognition)
+Phase 3 (CFOP Segmentation)
 
 ## Goals
-Surface weak OLL/PLL cases based on solve history using spaced repetition, and provide
-a drill mode for targeted practice on specific cases or surfaced weak sets.
+Identify which of the 57 OLL cases and 21 PLL cases occurred in each solve, stored
+against the solve record. F2L pair recognition is a stretch goal.
 
 ## Acceptance criteria
-- [ ] Spaced repetition scheduler ingests solve history and produces a prioritized list
-      of cases to review, weighted by recency and success rate
-- [ ] "Train weak cases" mode presents cases the scheduler has surfaced
-- [ ] Drill mode lets you practice a specific case: shows the case state, you solve it,
-      result is recorded and fed back to the scheduler
-- [ ] Case analytics view shows per-case solve count, average recognition time, trend
-- [ ] Scheduler state persists in IndexedDB and updates incrementally as solves come in
-- [ ] UI works correctly on iOS (Capacitor) and desktop Chrome
+- [ ] All 57 OLL cases are recognized correctly from cube state at OLL phase boundary
+- [ ] All 21 PLL cases are recognized correctly from cube state at PLL phase boundary
+- [ ] Cases are labelled with standard names (e.g. "OLL 33", "T-perm")
+- [ ] Case labels are stored on the solve record in IndexedDB
+- [ ] Recognition is deterministic — same state always produces same case label
+- [ ] Recognition handles AUF (adjustment of U face before/after) correctly for PLL
+- [ ] Case recognition runs retroactively on existing stored solves
+- [ ] Unit tests cover all 57 OLL cases and all 21 PLL cases with known cube states
+- [ ] **Stretch:** F2L pair cases are recognized for each of the 4 pairs per solve
 
 ## Out of scope
-- Scheduling across methods (non-CFOP)
-- Algorithm recommendation (which alg to learn) — out of scope for v1
-- Notifications or reminders
+- Training UI or drilling — that's Phase 5
+- Cross case recognition (not standard CFOP practice)
+- ZBLL or other advanced recognition
 
 ## Key technical notes
-- Spaced repetition algorithm: SM-2 is the standard starting point and well understood.
-  Write an ADR before choosing an alternative. The scheduler must be pure TS with no
-  UI dependency — it's a core logic module.
-- "Recognition time" for a case in drill mode: time from when the case is presented
-  to when the first move is made. This is distinct from execution time.
-- The scheduler should be designed to work on OLL/PLL initially, with F2L cases as
-  a drop-in addition if Phase 3's stretch goal was completed.
+- Investigate cubing.js pattern matching utilities for case recognition before building
+  a lookup table approach. Write an ADR for the approach chosen.
+- AUF handling for PLL: the cube state at the PLL boundary may have any of 4 AUF
+  rotations. Recognition must normalize for this.
+- F2L case recognition is significantly more complex than OLL/PLL — 41 cases per
+  slot × 4 slots, plus orientation. Scope carefully and consider doing one slot first
+  as a proof of concept.
+- Build a test harness that generates known cube states for each case — this is the
+  only reliable way to verify recognition coverage.
+- Case recognition is a pure function: cube state in, case label out.
+  Lives in `core/`, no UI or persistence dependency.
 
 ## Status
 backlog

@@ -1,41 +1,46 @@
-# Phase 3: Case Recognition
+# Phase 3: CFOP Segmentation
 
 ## Context
-With solves segmented and stored, this phase adds recognition of specific OLL/PLL cases
-from cube state at the phase boundary, and labels each solve with its cases.
+With solves being recorded with full move sequences and timestamps, this phase adds
+the ability to retroactively segment a solve into its CFOP phases with per-phase timing.
 
 ## Depends on
-Phase 2 (Solve Recording + CFOP Segmentation)
+Phase 2 (Scrambles + Solve Detection)
 
 ## Goals
-Identify which of the 57 OLL cases and 21 PLL cases occurred in each solve, stored
-against the solve record. F2L pair recognition is a stretch goal for this phase.
+Replay a recorded solve's move sequence against KPuzzle state and detect when each
+CFOP phase boundary is crossed. Store per-phase split times on the solve record.
 
 ## Acceptance criteria
-- [ ] All 57 OLL cases are recognized correctly from cube state at OLL phase boundary
-- [ ] All 21 PLL cases are recognized correctly from cube state at PLL phase boundary
-- [ ] Cases are labelled with standard names (e.g. "OLL 33", "T-perm") 
-- [ ] Case labels are stored on the solve record in IndexedDB
-- [ ] Recognition is deterministic — same state always produces same case label
-- [ ] Recognition handles AUF (adjustment of U face before/after) correctly for PLL
-- [ ] Unit tests cover all 57 OLL cases and all 21 PLL cases with known cube states
-- [ ] **Stretch:** F2L pair cases are recognized for each of the 4 pairs per solve
+- [ ] Cross completion is detected: bottom-layer cross is solved (any cross color)
+- [ ] F2L completion is detected: all four F2L pairs are solved
+- [ ] OLL completion is detected: top face is a single color
+- [ ] PLL completion is detected: cube is fully solved (already handled by solve detection)
+- [ ] Phase boundaries are detected by replaying the move sequence against KPuzzle state
+- [ ] Per-phase split times are calculated from move timestamps at boundaries
+- [ ] Segmentation runs retroactively on existing stored solves
+- [ ] Solve history view shows per-phase split times
+- [ ] Cross color is auto-detected (not assumed to be white)
+- [ ] Unit tests cover phase boundary detection for each transition
 
 ## Out of scope
-- Training UI or drilling — that's Phase 4
-- Cross case recognition (not standard CFOP practice)
-- ZBLL or other advanced recognition
+- X-cross detection (cross + one F2L pair simultaneously)
+- Case recognition (which OLL/PLL case) — that's Phase 4
+- Non-CFOP methods
+- Real-time segmentation during the solve (retroactive replay is sufficient)
 
 ## Key technical notes
-- cubing.js has pattern matching utilities — investigate whether case recognition can be
-  built on top of `experimentalSolveSide` or similar, or whether it requires a lookup table
-  approach from cube state. Write an ADR for the approach chosen.
-- AUF handling for PLL: the cube state at the PLL boundary may have any of 4 AUF rotations.
-  Recognition must normalize for this.
-- F2L case recognition is significantly more complex than OLL/PLL — 41 cases per slot × 4 slots,
-  plus orientation. Scope carefully and consider doing one slot first as a proof of concept.
-- Build a test harness that generates known cube states for each case — this is the only
-  reliable way to verify recognition coverage.
+- Cross color detection: after the solve, check which face's cross was solved first.
+  The user may use any cross color, and it may vary between solves.
+- Phase boundary detection is state-based: at each move, check if the relevant pieces
+  are in their solved positions. This uses KPuzzle state inspection, not move counting.
+- F2L detection: check each of the 4 corner-edge pairs in the first two layers.
+  F2L is complete when all 4 pairs are solved (regardless of insertion order).
+- Edge case: some solvers partially complete later phases while still in an earlier one
+  (e.g., influencing OLL during F2L). The boundary should be defined as the first moment
+  the phase's condition is met and remains met through the rest of the solve.
+- Segmentation is a pure function: move sequence + timestamps in, phase boundaries out.
+  No UI or persistence dependency — lives in `core/`.
 
 ## Status
 backlog
