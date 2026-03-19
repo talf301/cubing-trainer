@@ -38,4 +38,4 @@ Feature modules in `features/` can import from `core/` but not vice versa.
 - CI/CD pipeline
 
 ## Status
-backlog
+complete
