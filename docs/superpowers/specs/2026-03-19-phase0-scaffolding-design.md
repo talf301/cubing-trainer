@@ -61,7 +61,7 @@ Each route renders a simple heading (e.g., `<h1>Timer</h1>`) inside the shared l
 | Script | Command |
 |--------|---------|
 | `dev` | `vite` |
-| `build` | `tsc -b && vite build` |
+| `build` | `vite build` |
 | `test` | `vitest run` |
 | `test:watch` | `vitest` |
 | `typecheck` | `tsc --noEmit` |
