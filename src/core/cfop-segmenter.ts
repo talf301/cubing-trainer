@@ -135,41 +135,46 @@ export async function segmentSolve(
   scramble: string,
   moves: TimestampedMove[],
 ): Promise<CfopSplits> {
-  const { kpuzzle, geometry } = await getGeometry();
-  const splits: CfopSplits = {};
+  try {
+    const { kpuzzle, geometry } = await getGeometry();
+    const splits: CfopSplits = {};
 
-  let state = kpuzzle.defaultPattern().applyAlg(scramble);
-  let crossFaceIdx: number | null = null;
+    let state = kpuzzle.defaultPattern().applyAlg(scramble);
+    let crossFaceIdx: number | null = null;
 
-  for (const { move, timestamp } of moves) {
-    state = state.applyMove(move);
+    for (const { move, timestamp } of moves) {
+      state = state.applyMove(move);
 
-    // Phase 1: Detect cross (check all 6 faces)
-    if (crossFaceIdx === null) {
-      for (let f = 0; f < 6; f++) {
-        if (isCrossSolved(state, geometry, f)) {
-          crossFaceIdx = f;
-          splits.crossTime = timestamp;
-          splits.crossFace = FACE_NAMES[f];
-          break;
+      // Phase 1: Detect cross (check all 6 faces)
+      if (crossFaceIdx === null) {
+        for (let f = 0; f < 6; f++) {
+          if (isCrossSolved(state, geometry, f)) {
+            crossFaceIdx = f;
+            splits.crossTime = timestamp;
+            splits.crossFace = FACE_NAMES[f];
+            break;
+          }
+        }
+      }
+
+      // Phase 2: Detect F2L
+      if (crossFaceIdx !== null && splits.f2lTime === undefined) {
+        if (isF2LSolved(state, geometry, crossFaceIdx)) {
+          splits.f2lTime = timestamp;
+        }
+      }
+
+      // Phase 3: Detect OLL
+      if (splits.f2lTime !== undefined && splits.ollTime === undefined) {
+        if (isOLLSolved(state, geometry, crossFaceIdx!)) {
+          splits.ollTime = timestamp;
         }
       }
     }
 
-    // Phase 2: Detect F2L
-    if (crossFaceIdx !== null && splits.f2lTime === undefined) {
-      if (isF2LSolved(state, geometry, crossFaceIdx)) {
-        splits.f2lTime = timestamp;
-      }
-    }
-
-    // Phase 3: Detect OLL
-    if (splits.f2lTime !== undefined && splits.ollTime === undefined) {
-      if (isOLLSolved(state, geometry, crossFaceIdx!)) {
-        splits.ollTime = timestamp;
-      }
-    }
+    return splits;
+  } catch {
+    // Return empty splits if scramble/moves are malformed
+    return {};
   }
-
-  return splits;
 }
