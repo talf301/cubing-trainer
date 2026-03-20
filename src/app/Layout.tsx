@@ -5,6 +5,7 @@ const navItems = [
   { to: "/history", label: "History" },
   { to: "/training", label: "Training" },
   { to: "/settings", label: "Settings" },
+  { to: "/debug", label: "Debug" },
 ];
 
 export default function Layout() {
