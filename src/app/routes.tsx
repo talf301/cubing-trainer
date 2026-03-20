@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BluetoothDebug } from "@/features/bluetooth/BluetoothDebug";
-import { WebBluetoothCubeConnection } from "@/features/bluetooth/web-bluetooth-connection";
+import { GanBluetoothConnection } from "@/features/bluetooth/gan-bluetooth-connection";
 
 function Timer() {
   return <h1 className="text-2xl font-bold">Timer</h1>;
@@ -19,7 +19,7 @@ function Settings() {
 }
 
 function Debug() {
-  const [connection] = useState(() => new WebBluetoothCubeConnection());
+  const [connection] = useState(() => new GanBluetoothConnection());
   return <BluetoothDebug connection={connection} />;
 }
 
