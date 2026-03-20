@@ -14,9 +14,6 @@ export async function generateScramble(): Promise<ScrambleResult> {
   ]);
 
   const scramble = scrambleAlg.toString();
-  console.log("[generateScramble] scrambleAlg type:", scrambleAlg.constructor.name);
-  console.log("[generateScramble] scramble string:", JSON.stringify(scramble));
-  console.log("[generateScramble] first 5 chars codes:", [...scramble.slice(0, 20)].map(c => c.charCodeAt(0)));
   const solved = kpuzzle.defaultPattern();
   const expectedState = solved.applyAlg(scrambleAlg);
 

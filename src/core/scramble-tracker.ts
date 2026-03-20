@@ -11,12 +11,11 @@ export class ScrambleTracker {
   private moves: string[];
   private position: number = 0;
   private errorStack: string[] = [];
+  private pendingHalfTurn: boolean = false;
   private listeners = new Set<(state: ScrambleTrackerState) => void>();
 
   constructor(scramble: string) {
     this.moves = scramble.split(/\s+/).filter((s) => s.length > 0);
-    console.log("[ScrambleTracker] scramble string:", JSON.stringify(scramble));
-    console.log("[ScrambleTracker] parsed moves:", this.moves.map(m => JSON.stringify(m)));
   }
 
   get state(): ScrambleTrackerState {
@@ -32,24 +31,38 @@ export class ScrambleTracker {
   }
 
   onMove(move: string): void {
-    console.log("[ScrambleTracker] onMove called with:", JSON.stringify(move));
-    console.log("[ScrambleTracker] expected move:", JSON.stringify(this.moves[this.position]));
-    console.log("[ScrambleTracker] move char codes:", [...move].map(c => c.charCodeAt(0)));
-    console.log("[ScrambleTracker] expected char codes:", this.position < this.moves.length ? [...this.moves[this.position]].map(c => c.charCodeAt(0)) : "N/A");
-    console.log("[ScrambleTracker] match?", move === this.moves[this.position]);
     if (this.errorStack.length > 0) {
-      // In recovery mode
+      // In recovery mode — error stack contains actual physical moves (quarter turns)
       const expectedFix = invertMove(this.errorStack[this.errorStack.length - 1]);
       if (move === expectedFix) {
         this.errorStack.pop();
       } else {
         this.errorStack.push(move);
       }
-    } else {
+    } else if (this.position < this.moves.length) {
       // In tracking mode
-      if (this.position < this.moves.length && move === this.moves[this.position]) {
+      const expected = this.moves[this.position];
+
+      if (this.pendingHalfTurn) {
+        // Waiting for second quarter turn of a double move (e.g., "R2")
+        const face = expected.charAt(0);
+        if (move === face) {
+          // Second quarter turn completes the double move
+          this.pendingHalfTurn = false;
+          this.position++;
+        } else {
+          // Wrong — the first quarter turn and this move are both errors
+          this.pendingHalfTurn = false;
+          this.errorStack.push(face); // the first quarter turn we accepted
+          this.errorStack.push(move); // this wrong move
+        }
+      } else if (move === expected) {
+        // Exact match (single quarter turns, primes, or cube-reported doubles)
         this.position++;
-      } else if (this.position < this.moves.length) {
+      } else if (isDoubleMove(expected) && move === expected.charAt(0)) {
+        // First quarter turn of a double move
+        this.pendingHalfTurn = true;
+      } else {
         this.errorStack.push(move);
       }
     }
@@ -70,6 +83,10 @@ export class ScrambleTracker {
       cb(s);
     }
   }
+}
+
+function isDoubleMove(moveStr: string): boolean {
+  return moveStr.endsWith("2");
 }
 
 function invertMove(moveStr: string): string {

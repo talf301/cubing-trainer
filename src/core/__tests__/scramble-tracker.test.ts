@@ -47,6 +47,34 @@ describe("ScrambleTracker", () => {
       tracker.onMove("U2");
       expect(tracker.state.scrambleMoves[1].completed).toBe(true);
     });
+
+    it("accepts two quarter turns for a double move", () => {
+      const tracker = new ScrambleTracker("R2 U F");
+      tracker.onMove("R"); // first quarter turn
+      expect(tracker.state.scrambleMoves[0].completed).toBe(false);
+      tracker.onMove("R"); // second quarter turn completes R2
+      expect(tracker.state.scrambleMoves[0].completed).toBe(true);
+      expect(tracker.state.mode).toBe("tracking");
+    });
+
+    it("handles mixed double and single moves", () => {
+      const tracker = new ScrambleTracker("R2 U' F2");
+      tracker.onMove("R");
+      tracker.onMove("R"); // completes R2
+      tracker.onMove("U'"); // completes U'
+      tracker.onMove("F");
+      tracker.onMove("F"); // completes F2
+      expect(tracker.state.isComplete).toBe(true);
+    });
+
+    it("enters error recovery when wrong move during pending half turn", () => {
+      const tracker = new ScrambleTracker("R2 U F");
+      tracker.onMove("R"); // first quarter turn of R2
+      tracker.onMove("U"); // wrong — expected second R
+      expect(tracker.state.mode).toBe("recovering");
+      // Both the first R and the wrong U are on the error stack
+      expect(tracker.state.recoveryMoves).toEqual(["U'", "R'"]);
+    });
   });
 
   describe("error recovery", () => {
