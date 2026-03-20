@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import "fake-indexeddb/auto";
+// @ts-expect-error — fake-indexeddb exports types but package.json "exports" doesn't resolve them
 import FDBFactory from "fake-indexeddb/lib/FDBFactory";
 import { SolveStore, type StoredSolve } from "@/lib/solve-store";
 import { resetDB } from "@/lib/db";

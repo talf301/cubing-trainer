@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { cube3x3x3 } from "cubing/puzzles";
 import { SolveSession } from "@/core/solve-session";
-import type { KPattern } from "cubing/kpuzzle";
 
 async function setup() {
   const kpuzzle = await cube3x3x3.kpuzzle();
