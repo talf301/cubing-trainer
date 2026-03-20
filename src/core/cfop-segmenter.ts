@@ -1,4 +1,4 @@
-import type { KPuzzle } from "cubing/kpuzzle";
+import type { KPattern, KPuzzle } from "cubing/kpuzzle";
 
 const FACE_NAMES = ["U", "L", "F", "R", "B", "D"] as const;
 const OPPOSITE_FACE = [5, 3, 4, 1, 2, 0] as const; // U↔D, L↔R, F↔B
@@ -39,4 +39,18 @@ export function buildFaceGeometry(kpuzzle: KPuzzle): FaceGeometry {
   }
 
   return { faceEdges, faceCorners };
+}
+
+export function isCrossSolved(
+  pattern: KPattern,
+  geometry: FaceGeometry,
+  faceIdx: number,
+): boolean {
+  const edges = pattern.patternData["EDGES"];
+  for (const pos of geometry.faceEdges[faceIdx]) {
+    if (edges.pieces[pos] !== pos || edges.orientation[pos] !== 0) {
+      return false;
+    }
+  }
+  return true;
 }

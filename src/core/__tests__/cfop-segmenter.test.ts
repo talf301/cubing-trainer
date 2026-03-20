@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { cube3x3x3 } from "cubing/puzzles";
-import { buildFaceGeometry } from "../cfop-segmenter";
+import { buildFaceGeometry, isCrossSolved } from "../cfop-segmenter";
 
 describe("buildFaceGeometry", () => {
   it("returns 4 edge positions per face", async () => {
@@ -64,6 +64,40 @@ describe("buildFaceGeometry", () => {
         (e: number) => geometry.faceEdges[b].includes(e)
       );
       expect(shared).toHaveLength(0);
+    }
+  });
+});
+
+describe("isCrossSolved", () => {
+  it("solved cube has cross solved on all faces", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const geometry = buildFaceGeometry(kpuzzle);
+    const solved = kpuzzle.defaultPattern();
+
+    for (let f = 0; f < 6; f++) {
+      expect(isCrossSolved(solved, geometry, f)).toBe(true);
+    }
+  });
+
+  it("single R move breaks U, D, R, F, and B crosses but not L", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const geometry = buildFaceGeometry(kpuzzle);
+    const afterR = kpuzzle.defaultPattern().applyMove("R");
+
+    // R cycles 4 edges on the R face. These edges are shared with U, D, F, B.
+    // Only L cross is unaffected (no L-adjacent edges are on R face).
+    expect(isCrossSolved(afterR, geometry, 1)).toBe(true); // L
+    // At least R cross should be broken
+    expect(isCrossSolved(afterR, geometry, 3)).toBe(false); // R
+  });
+
+  it("applying a move and its inverse restores all crosses", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const geometry = buildFaceGeometry(kpuzzle);
+    const state = kpuzzle.defaultPattern().applyMove("R").applyMove("R'");
+
+    for (let f = 0; f < 6; f++) {
+      expect(isCrossSolved(state, geometry, f)).toBe(true);
     }
   });
 });
