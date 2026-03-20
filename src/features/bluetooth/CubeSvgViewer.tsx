@@ -8,14 +8,13 @@ interface CubeSvgViewerProps {
 }
 
 export function CubeSvgViewer({ pattern }: CubeSvgViewerProps) {
-  // Separate ref for the imperatively-managed SVG container.
-  // React must not touch this div's children.
   const svgContainerRef = useRef<HTMLDivElement>(null);
   const animatorRef = useRef<ExperimentalSVGAnimator | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
+    let element: HTMLElement | null = null;
 
     async function init() {
       const kpuzzle = await cube3x3x3.kpuzzle();
@@ -25,7 +24,8 @@ export function CubeSvgViewer({ pattern }: CubeSvgViewerProps) {
 
       const animator = new ExperimentalSVGAnimator(kpuzzle, svgSource);
       animatorRef.current = animator;
-      svgContainerRef.current.appendChild(animator.wrapperElement);
+      element = animator.wrapperElement;
+      svgContainerRef.current.appendChild(element);
       animator.draw(pattern ?? kpuzzle.defaultPattern());
       setLoading(false);
     }
@@ -34,8 +34,9 @@ export function CubeSvgViewer({ pattern }: CubeSvgViewerProps) {
 
     return () => {
       cancelled = true;
-      if (svgContainerRef.current) {
-        svgContainerRef.current.innerHTML = "";
+      // Remove only the element we added, not anything from a subsequent mount
+      if (element && element.parentNode) {
+        element.parentNode.removeChild(element);
       }
       animatorRef.current = null;
     };
