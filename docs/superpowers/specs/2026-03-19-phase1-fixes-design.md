@@ -33,7 +33,8 @@ interface CubeViewerProps {
   Append to a container ref.
 - Track how many moves have been fed to the player. When `moves` grows, feed only new
   moves via `experimentalAddMove()`, then call `jumpToEnd()`.
-- On `instanceKey` change: remove old player, create fresh one (solved state).
+- On `instanceKey` change: remove old player, create fresh one (solved state),
+  and reset the internal "fed move count" tracker to 0.
 - Cleanup on unmount: remove the player element from the container.
 
 ### BluetoothDebug changes
@@ -48,7 +49,8 @@ interface CubeViewerProps {
 
 - `src/features/bluetooth/CubeSvgViewer.tsx` → rename to `CubeViewer.tsx`, rewrite
 - `src/features/bluetooth/BluetoothDebug.tsx` — update props and add resetCount
-- `src/features/bluetooth/__tests__/BluetoothDebug.test.tsx` — update mock name
+- `src/features/bluetooth/__tests__/BluetoothDebug.test.tsx` — update mock path
+  from `../CubeSvgViewer` to `../CubeViewer` and component name in mock factory
 
 ---
 
@@ -70,6 +72,9 @@ Use the `MacAddressProvider` callback's `isFallbackCall` parameter correctly:
   the MAC address.
 
 This gives seamless connection where supported and falls back gracefully.
+
+If the user cancels the prompt (returns `null`), `gan-web-bluetooth` will throw,
+which the existing `connect()` try/catch handles — surfacing the error to the caller.
 
 ### Files changed
 
