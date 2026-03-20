@@ -7,7 +7,15 @@ import path from "path";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
-    target: "esnext", // required for cubing.js search worker (uses top-level await)
+    target: "esnext",
+  },
+  esbuild: {
+    target: "esnext", // cubing.js search worker uses top-level await
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      target: "esnext",
+    },
   },
   resolve: {
     alias: {
