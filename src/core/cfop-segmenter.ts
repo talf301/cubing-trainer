@@ -54,3 +54,34 @@ export function isCrossSolved(
   }
   return true;
 }
+
+export function isF2LSolved(
+  pattern: KPattern,
+  geometry: FaceGeometry,
+  crossFaceIdx: number,
+): boolean {
+  const oppFaceIdx = OPPOSITE_FACE[crossFaceIdx];
+
+  // Check 4 corners adjacent to cross face
+  const corners = pattern.patternData["CORNERS"];
+  for (const pos of geometry.faceCorners[crossFaceIdx]) {
+    if (corners.pieces[pos] !== pos || corners.orientation[pos] !== 0) {
+      return false;
+    }
+  }
+
+  // Check 4 equator edges (not on cross face, not on opposite face)
+  const crossEdgeSet = new Set(geometry.faceEdges[crossFaceIdx]);
+  const oppEdgeSet = new Set(geometry.faceEdges[oppFaceIdx]);
+  const edges = pattern.patternData["EDGES"];
+  for (let i = 0; i < 12; i++) {
+    if (!crossEdgeSet.has(i) && !oppEdgeSet.has(i)) {
+      // This is an equator edge
+      if (edges.pieces[i] !== i || edges.orientation[i] !== 0) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}

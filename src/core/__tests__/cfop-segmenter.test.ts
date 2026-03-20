@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { cube3x3x3 } from "cubing/puzzles";
-import { buildFaceGeometry, isCrossSolved } from "../cfop-segmenter";
+import { buildFaceGeometry, isCrossSolved, isF2LSolved } from "../cfop-segmenter";
 
 describe("buildFaceGeometry", () => {
   it("returns 4 edge positions per face", async () => {
@@ -99,5 +99,47 @@ describe("isCrossSolved", () => {
     for (let f = 0; f < 6; f++) {
       expect(isCrossSolved(state, geometry, f)).toBe(true);
     }
+  });
+});
+
+describe("isF2LSolved", () => {
+  it("solved cube has F2L solved for all cross faces", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const geometry = buildFaceGeometry(kpuzzle);
+    const solved = kpuzzle.defaultPattern();
+
+    for (let f = 0; f < 6; f++) {
+      expect(isF2LSolved(solved, geometry, f)).toBe(true);
+    }
+  });
+
+  it("U move does not break D-face F2L", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const geometry = buildFaceGeometry(kpuzzle);
+    // U only affects U-layer pieces; D-face F2L should be untouched
+    const afterU = kpuzzle.defaultPattern().applyMove("U");
+    const dFace = 5; // D
+    expect(isF2LSolved(afterU, geometry, dFace)).toBe(true);
+  });
+
+  it("R move breaks D-face F2L", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const geometry = buildFaceGeometry(kpuzzle);
+    // R affects D-layer corners and middle-layer edges
+    const afterR = kpuzzle.defaultPattern().applyMove("R");
+    const dFace = 5; // D
+    expect(isF2LSolved(afterR, geometry, dFace)).toBe(false);
+  });
+
+  it("D cross solved while D F2L is not", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const geometry = buildFaceGeometry(kpuzzle);
+    // The E (equator) slice move cycles the 4 equator edges (FL→FR→BR→BL)
+    // without affecting any D-layer or U-layer pieces.
+    // Result: D cross intact (D edges untouched), D F2L broken (equator edges displaced).
+    const state = kpuzzle.defaultPattern().applyMove("E");
+    const dFace = 5;
+    expect(isCrossSolved(state, geometry, dFace)).toBe(true);
+    expect(isF2LSolved(state, geometry, dFace)).toBe(false);
   });
 });
