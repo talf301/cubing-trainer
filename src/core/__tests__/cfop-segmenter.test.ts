@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { cube3x3x3 } from "cubing/puzzles";
-import { buildFaceGeometry, isCrossSolved, isF2LSolved, isOLLSolved } from "../cfop-segmenter";
+import { buildFaceGeometry, isCrossSolved, isF2LSolved, isOLLSolved, segmentSolve, type CfopSplits } from "../cfop-segmenter";
+import type { TimestampedMove } from "../solve-session";
 
 describe("buildFaceGeometry", () => {
   it("returns 4 edge positions per face", async () => {
@@ -177,5 +178,74 @@ describe("isOLLSolved", () => {
     const dFace = 5;
     expect(isF2LSolved(state, geometry, dFace)).toBe(true);
     expect(isOLLSolved(state, geometry, dFace)).toBe(false);
+  });
+});
+
+describe("segmentSolve", () => {
+  it("detects all phases on a single-move solve", async () => {
+    // Scramble "R" breaks everything. Solution "R'" restores all at once.
+    const splits = await segmentSolve("R", [
+      { move: "R'", timestamp: 100 },
+    ]);
+    expect(splits.crossTime).toBe(100);
+    expect(splits.f2lTime).toBe(100);
+    expect(splits.ollTime).toBe(100);
+    expect(splits.crossFace).toBeDefined();
+  });
+
+  it("detects phases at distinct timestamps for a constructed solve", async () => {
+    // Scramble = E (breaks equator edges = F2L) + Sune (breaks OLL) + T-perm (breaks PLL)
+    // Cross is never broken by any of these (all preserve D-layer edges).
+    // Solution: T-perm (self-inverse) + inv-Sune + E'
+    // Cross detected on first move. F2L not until final E' move.
+    const sune = "R U R' U R U2 R'";
+    const invSune = "R U2 R' U' R U' R'";
+    const tPerm = "R U R' U' R' F R2 U' R' U' R U R' F'";
+    const scramble = `E ${sune} ${tPerm}`;
+    const solutionStr = `${tPerm} ${invSune} E'`;
+    const solutionMoves = solutionStr.split(" ");
+
+    const moves: TimestampedMove[] = solutionMoves.map((m, i) => ({
+      move: m,
+      timestamp: (i + 1) * 100,
+    }));
+
+    const splits = await segmentSolve(scramble, moves);
+
+    expect(splits.crossTime).toBeDefined();
+    expect(splits.f2lTime).toBeDefined();
+    expect(splits.ollTime).toBeDefined();
+    expect(splits.crossTime!).toBeLessThanOrEqual(splits.f2lTime!);
+    expect(splits.f2lTime!).toBeLessThanOrEqual(splits.ollTime!);
+    // F2L should not be detected until E' is applied (last move)
+    expect(splits.f2lTime).toBe(solutionMoves.length * 100);
+  });
+
+  it("detects cross on a non-D face", async () => {
+    // Scramble "D" only moves D-layer pieces. U cross is still solved after solution.
+    const splits = await segmentSolve("D", [
+      { move: "D'", timestamp: 200 },
+    ]);
+    // The segmenter checks faces in order [U, L, F, R, B, D].
+    // After "D'" from scramble "D", all crosses are solved. First detected = U.
+    expect(splits.crossFace).toBe("U");
+    expect(splits.crossTime).toBe(200);
+  });
+
+  it("auto-detects cross face", async () => {
+    const splits = await segmentSolve("R", [
+      { move: "R'", timestamp: 100 },
+    ]);
+    expect(splits.crossFace).toBeDefined();
+    expect(["U", "L", "F", "R", "B", "D"]).toContain(splits.crossFace);
+  });
+
+  it("returns no splits if solve never completes cross", async () => {
+    const splits = await segmentSolve("R U F D L B R2 U2 F2 D2", [
+      { move: "R", timestamp: 100 },
+    ]);
+    expect(splits.crossTime).toBeUndefined();
+    expect(splits.f2lTime).toBeUndefined();
+    expect(splits.ollTime).toBeUndefined();
   });
 });

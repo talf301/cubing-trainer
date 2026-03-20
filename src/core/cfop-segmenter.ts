@@ -1,4 +1,6 @@
 import type { KPattern, KPuzzle } from "cubing/kpuzzle";
+import { cube3x3x3 } from "cubing/puzzles";
+import type { TimestampedMove } from "./solve-session";
 
 const FACE_NAMES = ["U", "L", "F", "R", "B", "D"] as const;
 const OPPOSITE_FACE = [5, 3, 4, 1, 2, 0] as const; // U↔D, L↔R, F↔B
@@ -109,4 +111,65 @@ export function isOLLSolved(
   }
 
   return true;
+}
+
+export interface CfopSplits {
+  crossTime?: number;  // ms relative to solve start
+  f2lTime?: number;
+  ollTime?: number;
+  crossFace?: string;  // "U", "L", "F", "R", "B", "D"
+}
+
+// Cache geometry since it's the same for every 3x3 solve
+let cachedGeometry: FaceGeometry | null = null;
+
+async function getGeometry(): Promise<{ kpuzzle: KPuzzle; geometry: FaceGeometry }> {
+  const kpuzzle = await cube3x3x3.kpuzzle();
+  if (!cachedGeometry) {
+    cachedGeometry = buildFaceGeometry(kpuzzle);
+  }
+  return { kpuzzle, geometry: cachedGeometry };
+}
+
+export async function segmentSolve(
+  scramble: string,
+  moves: TimestampedMove[],
+): Promise<CfopSplits> {
+  const { kpuzzle, geometry } = await getGeometry();
+  const splits: CfopSplits = {};
+
+  let state = kpuzzle.defaultPattern().applyAlg(scramble);
+  let crossFaceIdx: number | null = null;
+
+  for (const { move, timestamp } of moves) {
+    state = state.applyMove(move);
+
+    // Phase 1: Detect cross (check all 6 faces)
+    if (crossFaceIdx === null) {
+      for (let f = 0; f < 6; f++) {
+        if (isCrossSolved(state, geometry, f)) {
+          crossFaceIdx = f;
+          splits.crossTime = timestamp;
+          splits.crossFace = FACE_NAMES[f];
+          break;
+        }
+      }
+    }
+
+    // Phase 2: Detect F2L
+    if (crossFaceIdx !== null && splits.f2lTime === undefined) {
+      if (isF2LSolved(state, geometry, crossFaceIdx)) {
+        splits.f2lTime = timestamp;
+      }
+    }
+
+    // Phase 3: Detect OLL
+    if (splits.f2lTime !== undefined && splits.ollTime === undefined) {
+      if (isOLLSolved(state, geometry, crossFaceIdx!)) {
+        splits.ollTime = timestamp;
+      }
+    }
+  }
+
+  return splits;
 }
