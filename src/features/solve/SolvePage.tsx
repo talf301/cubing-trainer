@@ -3,14 +3,15 @@ import type { CubeConnection } from "@/core/cube-connection";
 import { useCubeConnection } from "@/features/bluetooth/use-cube-connection";
 import { useSolveSession } from "./use-solve-session";
 import { SolveHistory, formatTime } from "./SolveHistory";
+import { ScrambleDisplay } from "./ScrambleDisplay";
 
 interface SolvePageProps {
   connection: CubeConnection;
 }
 
 const PHASE_LABELS: Record<string, string> = {
-  idle: "Connect your cube and press Start",
-  scrambling: "Apply the scramble to your cube",
+  idle: "Connect your cube to begin",
+  scrambling: "",
   ready: "Scramble verified — start solving!",
   solving: "",
   solved: "Solved!",
@@ -18,7 +19,7 @@ const PHASE_LABELS: Record<string, string> = {
 
 export function SolvePage({ connection }: SolvePageProps) {
   const { status, connect } = useCubeConnection(connection);
-  const { phase, scramble, elapsedMs, recentSolves, startNewSolve } =
+  const { phase, displayMs, trackerState, recentSolves } =
     useSolveSession(connection);
 
   const isConnected = status === "connected";
@@ -38,32 +39,22 @@ export function SolvePage({ connection }: SolvePageProps) {
         </div>
       )}
 
-      {/* Scramble display */}
-      {scramble && phase !== "idle" && (
+      {/* Scramble display with progress */}
+      {phase === "scrambling" && trackerState && (
         <div className="text-center">
-          <p className="font-mono text-xl tracking-wide">{scramble}</p>
+          <ScrambleDisplay trackerState={trackerState} />
         </div>
       )}
 
       {/* Timer */}
       <div className="text-center">
         <p className="font-mono text-6xl font-bold tabular-nums">
-          {formatTime(elapsedMs)}
+          {formatTime(displayMs)}
         </p>
-        <p className="mt-2 text-gray-400">{PHASE_LABELS[phase]}</p>
+        {PHASE_LABELS[phase] && (
+          <p className="mt-2 text-gray-400">{PHASE_LABELS[phase]}</p>
+        )}
       </div>
-
-      {/* Start / Next button */}
-      {isConnected && (phase === "idle" || phase === "solved") && (
-        <div className="text-center">
-          <button
-            onClick={startNewSolve}
-            className="rounded bg-green-600 px-6 py-3 text-lg font-medium hover:bg-green-500"
-          >
-            {phase === "idle" ? "Start" : "Next Solve"}
-          </button>
-        </div>
-      )}
 
       {/* Recent solves */}
       {recentSolves.length > 0 && (

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { CubeConnection, CubeMoveEvent } from "@/core/cube-connection";
 import { SolveSession, type SolvePhase } from "@/core/solve-session";
+import { ScrambleTracker, type ScrambleTrackerState } from "@/core/scramble-tracker";
 import { generateScramble } from "@/lib/scramble";
 import { SolveStore, type StoredSolve } from "@/lib/solve-store";
 
@@ -9,17 +10,53 @@ const solveStore = new SolveStore();
 
 export function useSolveSession(connection: CubeConnection) {
   const sessionRef = useRef(new SolveSession());
+  const trackerRef = useRef<ScrambleTracker | null>(null);
   const [phase, setPhase] = useState<SolvePhase>("idle");
   const [scramble, setScramble] = useState<string>("");
-  const [elapsedMs, setElapsedMs] = useState(0);
+  const [displayMs, setDisplayMs] = useState(0);
+  const [trackerState, setTrackerState] = useState<ScrambleTrackerState | null>(null);
   const [recentSolves, setRecentSolves] = useState<StoredSolve[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const solveStartWallRef = useRef(0);
+  const lastSolveDurationRef = useRef(0);
 
   // Load recent solves on mount
   useEffect(() => {
     solveStore.getAll().then(setRecentSolves);
   }, []);
+
+  const startNewSolve = useCallback(async () => {
+    const result = await generateScramble();
+    setScramble(result.scramble);
+
+    // Create a new ScrambleTracker for this scramble
+    const tracker = new ScrambleTracker(result.scramble);
+    trackerRef.current = tracker;
+    setTrackerState(tracker.state);
+    tracker.addStateListener(setTrackerState);
+
+    // Show previous solve time during scrambling
+    setDisplayMs(lastSolveDurationRef.current);
+
+    sessionRef.current.startScramble(result.scramble, result.expectedState);
+  }, []);
+
+  // Auto-generate scramble on connect
+  useEffect(() => {
+    const onStatus = (status: string) => {
+      if (status === "connected" && sessionRef.current.phase === "idle") {
+        startNewSolve();
+      }
+    };
+
+    // Check if already connected
+    if (connection.status === "connected" && sessionRef.current.phase === "idle") {
+      startNewSolve();
+    }
+
+    connection.addStatusListener(onStatus);
+    return () => connection.removeStatusListener(onStatus);
+  }, [connection, startNewSolve]);
 
   // Listen to phase changes
   useEffect(() => {
@@ -27,10 +64,21 @@ export function useSolveSession(connection: CubeConnection) {
     const onPhase = (newPhase: SolvePhase) => {
       setPhase(newPhase);
 
+      if (newPhase === "ready") {
+        // Clean up tracker
+        if (trackerRef.current) {
+          trackerRef.current.removeStateListener(setTrackerState);
+          trackerRef.current = null;
+          setTrackerState(null);
+        }
+        // Show 0 while waiting to solve
+        setDisplayMs(0);
+      }
+
       if (newPhase === "solving") {
         solveStartWallRef.current = Date.now();
         timerRef.current = setInterval(() => {
-          setElapsedMs(Date.now() - solveStartWallRef.current);
+          setDisplayMs(Date.now() - solveStartWallRef.current);
         }, 10);
       }
 
@@ -39,7 +87,8 @@ export function useSolveSession(connection: CubeConnection) {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
-        setElapsedMs(session.duration);
+        setDisplayMs(session.duration);
+        lastSolveDurationRef.current = session.duration;
 
         // Save the completed solve
         const solve: StoredSolve = {
@@ -54,6 +103,9 @@ export function useSolveSession(connection: CubeConnection) {
         solveStore.save(solve).then(() => {
           solveStore.getAll().then(setRecentSolves);
         });
+
+        // Auto-advance to next scramble
+        startNewSolve();
       }
     };
 
@@ -62,19 +114,24 @@ export function useSolveSession(connection: CubeConnection) {
       session.removePhaseListener(onPhase);
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, []);
+  }, [startNewSolve]);
 
-  // Listen to cube moves and feed them to the session
+  // Listen to cube moves and feed them to session + tracker
   useEffect(() => {
     const session = sessionRef.current;
 
     const onMove = (event: CubeMoveEvent) => {
+      const moveStr = event.move.toString();
+
       if (session.phase === "scrambling") {
-        // Check if this move completes the scramble — but don't also start solving.
-        // The NEXT move after scramble is verified starts the timer.
+        // Feed move to tracker for progress display
+        if (trackerRef.current) {
+          trackerRef.current.onMove(moveStr);
+        }
+        // Check if scramble state matches
         session.onCubeState(event.state);
       } else if (session.phase === "ready" || session.phase === "solving") {
-        session.onMove(event.move.toString(), event.timestamp, event.state);
+        session.onMove(moveStr, event.timestamp, event.state);
       }
     };
 
@@ -82,18 +139,11 @@ export function useSolveSession(connection: CubeConnection) {
     return () => connection.removeMoveListener(onMove);
   }, [connection]);
 
-  const startNewSolve = useCallback(async () => {
-    const result = await generateScramble();
-    setScramble(result.scramble);
-    setElapsedMs(0);
-    sessionRef.current.startScramble(result.scramble, result.expectedState);
-  }, []);
-
   return {
     phase,
     scramble,
-    elapsedMs,
+    displayMs,
+    trackerState,
     recentSolves,
-    startNewSolve,
   };
 }
