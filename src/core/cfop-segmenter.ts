@@ -85,3 +85,28 @@ export function isF2LSolved(
 
   return true;
 }
+
+export function isOLLSolved(
+  pattern: KPattern,
+  geometry: FaceGeometry,
+  crossFaceIdx: number,
+): boolean {
+  const oppFaceIdx = OPPOSITE_FACE[crossFaceIdx];
+
+  // Check orientation of all pieces on opposite face (the OLL face)
+  const edges = pattern.patternData["EDGES"];
+  for (const pos of geometry.faceEdges[oppFaceIdx]) {
+    if (edges.orientation[pos] !== 0) {
+      return false;
+    }
+  }
+
+  const corners = pattern.patternData["CORNERS"];
+  for (const pos of geometry.faceCorners[oppFaceIdx]) {
+    if (corners.orientation[pos] !== 0) {
+      return false;
+    }
+  }
+
+  return true;
+}

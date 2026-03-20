@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { cube3x3x3 } from "cubing/puzzles";
-import { buildFaceGeometry, isCrossSolved, isF2LSolved } from "../cfop-segmenter";
+import { buildFaceGeometry, isCrossSolved, isF2LSolved, isOLLSolved } from "../cfop-segmenter";
 
 describe("buildFaceGeometry", () => {
   it("returns 4 edge positions per face", async () => {
@@ -141,5 +141,41 @@ describe("isF2LSolved", () => {
     const dFace = 5;
     expect(isCrossSolved(state, geometry, dFace)).toBe(true);
     expect(isF2LSolved(state, geometry, dFace)).toBe(false);
+  });
+});
+
+describe("isOLLSolved", () => {
+  it("solved cube has OLL solved for all cross faces", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const geometry = buildFaceGeometry(kpuzzle);
+    const solved = kpuzzle.defaultPattern();
+
+    for (let f = 0; f < 6; f++) {
+      expect(isOLLSolved(solved, geometry, f)).toBe(true);
+    }
+  });
+
+  it("PLL-only state has OLL solved", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const geometry = buildFaceGeometry(kpuzzle);
+    // T-perm swaps pieces but preserves orientation — OLL stays solved
+    const tPerm = "R U R' U' R' F R2 U' R' U' R U R' F'";
+    const state = kpuzzle.defaultPattern().applyAlg(tPerm);
+    const dFace = 5; // cross on D
+    // F2L should still be solved (T-perm only affects U layer)
+    expect(isF2LSolved(state, geometry, dFace)).toBe(true);
+    // OLL should still be solved (T-perm preserves orientation)
+    expect(isOLLSolved(state, geometry, dFace)).toBe(true);
+  });
+
+  it("Sune breaks OLL but preserves F2L", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const geometry = buildFaceGeometry(kpuzzle);
+    // Sune changes U-layer corner orientations; net effect is U-layer only
+    const sune = "R U R' U R U2 R'";
+    const state = kpuzzle.defaultPattern().applyAlg(sune);
+    const dFace = 5;
+    expect(isF2LSolved(state, geometry, dFace)).toBe(true);
+    expect(isOLLSolved(state, geometry, dFace)).toBe(false);
   });
 });
