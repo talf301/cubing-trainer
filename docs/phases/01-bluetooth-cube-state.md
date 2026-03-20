@@ -14,13 +14,13 @@ The Bluetooth layer must be behind a `CubeConnection` abstraction so a Capacitor
 implementation can be added later without changing callers.
 
 ## Acceptance criteria
-- [ ] Connects to a GAN 356i Carry E on desktop via Web Bluetooth (Chrome)
-- [ ] Bluetooth interface is behind a `CubeConnection` abstraction — callers don't know the platform
-- [ ] Move events are received and translated to cubing.js move notation correctly
-- [ ] Cube state is maintained accurately via KPuzzle — verified by doing a known sequence and checking state
-- [ ] Connection loss is detected and surfaced to the caller; reconnection is possible without reload
-- [ ] A minimal debug UI shows connection status, last moves received, and current cube state
-- [ ] Unit tests cover move translation and state management logic
+- [x] Connects to a GAN 356i Carry E on desktop via Web Bluetooth (Chrome)
+- [x] Bluetooth interface is behind a `CubeConnection` abstraction — callers don't know the platform
+- [x] Move events are received and translated to cubing.js move notation correctly
+- [x] Cube state is maintained accurately via KPuzzle — verified by doing a known sequence and checking state
+- [x] Connection loss is detected and surfaced to the caller; reconnection is possible without reload
+- [x] A minimal debug UI shows connection status, last moves received, and current cube state
+- [x] Unit tests cover move translation and state management logic
 
 ## Out of scope
 - Capacitor / CoreBluetooth / iOS — deferred to a future phase
@@ -40,7 +40,7 @@ implementation can be added later without changing callers.
   by implementing the same interface, but don't build that implementation now.
 
 ## Status
-in-progress
+complete
 
-<!-- 2026-03-19: Core implementation done — CubeConnection interface, GanBluetoothConnection (using gan-web-bluetooth), useCubeConnection hook, BluetoothDebug page, CubeSvgViewer. Connection to GAN 356i Carry E works and streams events. Two bugs remain: (1) CubeSvgViewer doesn't render in browser despite no errors — likely StrictMode/async race condition with ExperimentalSVGAnimator, (2) MAC address requires manual prompt on Windows (no watchAdvertisements support). Next: debug SVG rendering, then verify move events and state tracking. 17 tests passing. -->
+<!-- 2026-03-19: All acceptance criteria met. CubeViewer replaced CubeSvgViewer (TwistyPlayer instead of ExperimentalSVGAnimator). MAC auto-detection added with prompt fallback. ADR-001 amended. Smoke tested with GAN 356i Carry E — connection, moves, state, and visualization all working. 17 tests passing. -->
 

@@ -1,17 +1,17 @@
 # Project Status
 
 ## Current state
-Phase 0 complete. Phase 1 (Bluetooth + Cube State) in progress — connection works, debug UI partially working.
+Phase 0 and Phase 1 complete. Ready to start Phase 2 (Solve Recording & Segmentation).
 
 ## Active phases
-- Phase 1: Bluetooth + Cube State (in-progress)
+None
 
 ## Completed phases
 - Phase 0: Project Scaffolding
+- Phase 1: Bluetooth + Cube State
 
 ## Blockers
-- CubeSvgViewer (cubing.js ExperimentalSVGAnimator) not rendering in browser — needs debugging
-- MAC address prompt required on Windows (no watchAdvertisements support)
+None
 
 ---
 <!-- Session logs appended below by /end-session -->
