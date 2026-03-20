@@ -39,3 +39,6 @@ Feature modules in `features/` can import from `core/` but not vice versa.
 
 ## Status
 complete
+
+<!-- 2026-03-19: Completed all acceptance criteria. Directory structure created, cubing.js and idb installed, all npm scripts working, app shell with routing in place. -->
+

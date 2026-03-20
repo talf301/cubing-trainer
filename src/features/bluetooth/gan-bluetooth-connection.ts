@@ -50,7 +50,6 @@ export class GanBluetoothConnection implements CubeConnection {
 
       this.subscription = this.conn.events$.subscribe(
         (event: GanCubeEvent) => {
-          console.log("[GAN] event:", event.type, event);
           if (event.type === "MOVE") {
             this.handleMove(event.move, event.timestamp);
           } else if (event.type === "DISCONNECT") {
@@ -116,7 +115,6 @@ export class GanBluetoothConnection implements CubeConnection {
   }
 
   private setStatus(status: ConnectionStatus): void {
-    console.log("[GAN] status:", this.currentStatus, "→", status);
     this.currentStatus = status;
     for (const listener of this.statusListeners) {
       listener(status);
