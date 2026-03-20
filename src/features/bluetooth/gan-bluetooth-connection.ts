@@ -37,12 +37,15 @@ export class GanBluetoothConnection implements CubeConnection {
       this.kpuzzle = await cube3x3x3.kpuzzle();
       this.currentState = this.kpuzzle.defaultPattern();
 
-      this.conn = await connectGanCube(async () => {
-        // Chrome on Windows/macOS doesn't support watchAdvertisements(),
-        // so the automatic MAC detection fails. Prompt the user.
-        // The MAC can be found at chrome://bluetooth-internals/#devices
+      this.conn = await connectGanCube(async (_device, isFallbackCall) => {
+        if (!isFallbackCall) {
+          // Let the library try watchAdvertisements() for automatic MAC detection
+          return null;
+        }
+        // Auto-detection failed — prompt the user as a fallback
         const mac = prompt(
-          "Enter cube MAC address (from chrome://bluetooth-internals):\n" +
+          "Automatic MAC detection unavailable.\n" +
+            "Enter cube MAC address (from chrome://bluetooth-internals):\n" +
             "Format: XX:XX:XX:XX:XX:XX",
         );
         return mac;
