@@ -5,6 +5,7 @@ import { SolveSession, type SolvePhase } from "@/core/solve-session";
 import { ScrambleTracker, type ScrambleTrackerState } from "@/core/scramble-tracker";
 import { generateScramble } from "@/lib/scramble";
 import { SolveStore, type StoredSolve } from "@/lib/solve-store";
+import { segmentSolve } from "@/core/cfop-segmenter";
 
 const solveStore = new SolveStore();
 
@@ -25,7 +26,9 @@ export function useSolveSession(connection: CubeConnection) {
 
   // Load recent solves on mount
   useEffect(() => {
-    solveStore.getAll().then(setRecentSolves);
+    solveStore.backfillSplits().then(() => {
+      solveStore.getAll().then(setRecentSolves);
+    });
   }, []);
 
   const startNewSolve = useCallback(async () => {
@@ -105,8 +108,12 @@ export function useSolveSession(connection: CubeConnection) {
           duration: session.duration,
           createdAt: Date.now(),
         };
-        solveStore.save(solve).then(() => {
-          solveStore.getAll().then(setRecentSolves);
+        // Run segmentation before saving
+        segmentSolve(solve.scramble, solve.moves).then((splits) => {
+          solve.splits = splits;
+          solveStore.save(solve).then(() => {
+            solveStore.getAll().then(setRecentSolves);
+          });
         });
 
         // Auto-advance to next scramble

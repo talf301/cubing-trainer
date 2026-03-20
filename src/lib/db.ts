@@ -11,6 +11,12 @@ export interface AcubemyDB {
       endTime: number;
       duration: number;
       createdAt: number;
+      splits?: {
+        crossTime?: number;
+        f2lTime?: number;
+        ollTime?: number;
+        crossFace?: string;
+      };
     };
     indexes: { "by-created": number };
   };

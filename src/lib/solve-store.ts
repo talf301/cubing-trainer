@@ -1,5 +1,7 @@
 import { getDB } from "./db";
 import type { TimestampedMove } from "@/core/solve-session";
+import type { CfopSplits } from "@/core/cfop-segmenter";
+import { segmentSolve } from "@/core/cfop-segmenter";
 
 export interface StoredSolve {
   id: string;
@@ -9,6 +11,7 @@ export interface StoredSolve {
   endTime: number;
   duration: number;
   createdAt: number;
+  splits?: CfopSplits;
 }
 
 export class SolveStore {
@@ -26,5 +29,16 @@ export class SolveStore {
   async getById(id: string): Promise<StoredSolve | undefined> {
     const db = await getDB();
     return db.get("solves", id);
+  }
+
+  async backfillSplits(): Promise<void> {
+    const all = await this.getAll();
+    for (const solve of all) {
+      if (!solve.splits) {
+        const splits = await segmentSolve(solve.scramble, solve.moves);
+        solve.splits = splits;
+        await this.save(solve);
+      }
+    }
   }
 }
