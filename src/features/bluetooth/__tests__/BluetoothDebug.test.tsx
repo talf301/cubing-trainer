@@ -1,3 +1,4 @@
+// src/features/bluetooth/__tests__/BluetoothDebug.test.tsx
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -7,9 +8,9 @@ import type {
   ConnectionStatus,
 } from "@/core/cube-connection";
 
-// Mock CubeSvgViewer to avoid cubing.js async loading + three.js in jsdom
-vi.mock("../CubeSvgViewer", () => ({
-  CubeSvgViewer: () => <div data-testid="cube-svg-mock" />,
+// Mock CubeViewer to avoid cubing.js TwistyPlayer in jsdom
+vi.mock("../CubeViewer", () => ({
+  CubeViewer: () => <div data-testid="cube-viewer-mock" />,
 }));
 
 function createMockConnection(

@@ -1,6 +1,8 @@
+// src/features/bluetooth/BluetoothDebug.tsx
+import { useState } from "react";
 import type { CubeConnection } from "@/core/cube-connection";
 import { useCubeConnection } from "./use-cube-connection";
-import { CubeSvgViewer } from "./CubeSvgViewer";
+import { CubeViewer } from "./CubeViewer";
 
 interface BluetoothDebugProps {
   connection: CubeConnection;
@@ -13,8 +15,14 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function BluetoothDebug({ connection }: BluetoothDebugProps) {
-  const { status, state, moves, error, connect, disconnect, resetState } =
+  const { status, moves, error, connect, disconnect, resetState } =
     useCubeConnection(connection);
+  const [resetCount, setResetCount] = useState(0);
+
+  const handleReset = () => {
+    resetState();
+    setResetCount((c) => c + 1);
+  };
 
   return (
     <div className="space-y-6">
@@ -41,7 +49,7 @@ export function BluetoothDebug({ connection }: BluetoothDebugProps) {
               Disconnect
             </button>
             <button
-              onClick={resetState}
+              onClick={handleReset}
               className="rounded bg-yellow-600 px-4 py-2 text-sm font-medium hover:bg-yellow-500"
             >
               Reset State
@@ -61,7 +69,7 @@ export function BluetoothDebug({ connection }: BluetoothDebugProps) {
       {status === "connected" && (
         <div>
           <h2 className="mb-2 text-lg font-semibold">Cube State</h2>
-          <CubeSvgViewer pattern={state} />
+          <CubeViewer moves={moves} instanceKey={resetCount} />
         </div>
       )}
 
