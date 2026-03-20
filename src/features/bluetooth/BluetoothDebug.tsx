@@ -13,7 +13,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function BluetoothDebug({ connection }: BluetoothDebugProps) {
-  const { status, state, moves, connect, disconnect, resetState } =
+  const { status, state, moves, error, connect, disconnect, resetState } =
     useCubeConnection(connection);
 
   return (
@@ -23,12 +23,13 @@ export function BluetoothDebug({ connection }: BluetoothDebugProps) {
       {/* Connection status */}
       <div className="flex items-center gap-4">
         <span className={`font-mono ${STATUS_COLORS[status]}`}>{status}</span>
-        {status === "disconnected" && (
+        {(status === "disconnected" || status === "connecting") && (
           <button
             onClick={connect}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-500"
+            disabled={status === "connecting"}
+            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-500 disabled:opacity-50"
           >
-            Connect
+            {status === "connecting" ? "Connecting..." : "Connect"}
           </button>
         )}
         {status === "connected" && (
@@ -48,6 +49,13 @@ export function BluetoothDebug({ connection }: BluetoothDebugProps) {
           </>
         )}
       </div>
+
+      {/* Error display */}
+      {error && (
+        <div className="rounded bg-red-900/50 px-4 py-2 text-sm text-red-300">
+          Error: {error}
+        </div>
+      )}
 
       {/* Cube state visualization */}
       {status === "connected" && (

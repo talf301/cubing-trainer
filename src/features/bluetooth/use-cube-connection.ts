@@ -34,8 +34,16 @@ export function useCubeConnection(connection: CubeConnection) {
     };
   }, [connection]);
 
+  const [error, setError] = useState<string | null>(null);
+
   const connect = useCallback(async () => {
-    await connection.connect();
+    try {
+      setError(null);
+      await connection.connect();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      console.error("Connection failed:", e);
+    }
   }, [connection]);
 
   const disconnect = useCallback(() => {
@@ -48,5 +56,5 @@ export function useCubeConnection(connection: CubeConnection) {
     setMoves([]);
   }, [connection]);
 
-  return { status, state, moves, connect, disconnect, resetState };
+  return { status, state, moves, error, connect, disconnect, resetState };
 }
