@@ -19,6 +19,9 @@ export function useSolveSession(connection: CubeConnection) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const solveStartWallRef = useRef(0);
   const lastSolveDurationRef = useRef(0);
+  // GAN cubes replay buffered moves on connect; ignore moves arriving
+  // within this window after the tracker is created.
+  const trackerReadyAtRef = useRef(0);
 
   // Load recent solves on mount
   useEffect(() => {
@@ -29,9 +32,11 @@ export function useSolveSession(connection: CubeConnection) {
     const result = await generateScramble();
     setScramble(result.scramble);
 
-    // Create a new ScrambleTracker for this scramble
+    // Create a new ScrambleTracker for this scramble.
+    // Delay accepting moves briefly to let the GAN cube's buffered move burst flush.
     const tracker = new ScrambleTracker(result.scramble);
     trackerRef.current = tracker;
+    trackerReadyAtRef.current = Date.now() + 500;
     setTrackerState(tracker.state);
     tracker.addStateListener(setTrackerState);
 
@@ -124,8 +129,9 @@ export function useSolveSession(connection: CubeConnection) {
       const moveStr = event.move.toString();
 
       if (session.phase === "scrambling") {
-        // Feed move to tracker for progress display
-        if (trackerRef.current) {
+        // Feed move to tracker for progress display.
+        // Skip moves arriving during the post-connect buffer flush window.
+        if (trackerRef.current && Date.now() >= trackerReadyAtRef.current) {
           trackerRef.current.onMove(moveStr);
         }
         // Check if scramble state matches
