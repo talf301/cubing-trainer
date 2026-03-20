@@ -13,16 +13,16 @@ the first move after scramble is verified, detect when the cube is solved, and r
 the solve with its move sequence and timestamps.
 
 ## Acceptance criteria
-- [ ] Scrambles are generated using cubing.js `randomScrambleForEvent("333")`
-- [ ] Scramble is displayed to the user
-- [ ] App detects when the physical cube state matches the expected scrambled state
-- [ ] Timer starts automatically on the first move after scramble state is verified
-- [ ] Timer stops automatically when the cube reaches solved state
-- [ ] Full move sequence is recorded with per-move timestamps
-- [ ] Total solve time is accurate
-- [ ] Solves are persisted to IndexedDB via idb and survive page reload
-- [ ] A solve history list renders completed solves with total time
-- [ ] Unit tests cover scramble state matching and solve detection logic
+- [x] Scrambles are generated using cubing.js `randomScrambleForEvent("333")`
+- [x] Scramble is displayed to the user
+- [x] App detects when the physical cube state matches the expected scrambled state
+- [x] Timer starts automatically on the first move after scramble state is verified
+- [x] Timer stops automatically when the cube reaches solved state
+- [x] Full move sequence is recorded with per-move timestamps
+- [x] Total solve time is accurate
+- [x] Solves are persisted to IndexedDB via idb and survive page reload
+- [x] A solve history list renders completed solves with total time
+- [x] Unit tests cover scramble state matching and solve detection logic
 
 ## Out of scope
 - CFOP phase segmentation — that's Phase 3
@@ -42,4 +42,6 @@ the solve with its move sequence and timestamps.
   but only populate what this phase produces.
 
 ## Status
-backlog
+complete
+
+<!-- 2026-03-19: Implemented all acceptance criteria — scramble generation, SolveSession state machine, IndexedDB persistence via idb, solve page UI with timer, and history page. Orientation-agnostic comparison not needed (fixed orientation: green forward, white on top). Needs manual smoke test with physical cube. -->
