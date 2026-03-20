@@ -11,7 +11,7 @@ export class ScrambleTracker {
   private moves: string[];
   private position: number = 0;
   private errorStack: string[] = [];
-  private pendingHalfTurn: boolean = false;
+  private pendingHalfMove: string | null = null;
   private listeners = new Set<(state: ScrambleTrackerState) => void>();
 
   constructor(scramble: string) {
@@ -43,25 +43,25 @@ export class ScrambleTracker {
       // In tracking mode
       const expected = this.moves[this.position];
 
-      if (this.pendingHalfTurn) {
+      if (this.pendingHalfMove !== null) {
         // Waiting for second quarter turn of a double move (e.g., "R2")
-        const face = expected.charAt(0);
-        if (move === face) {
-          // Second quarter turn completes the double move
-          this.pendingHalfTurn = false;
+        if (move === this.pendingHalfMove) {
+          // Second quarter turn matches the first — completes the double move
+          this.pendingHalfMove = null;
           this.position++;
         } else {
           // Wrong — the first quarter turn and this move are both errors
-          this.pendingHalfTurn = false;
-          this.errorStack.push(face); // the first quarter turn we accepted
-          this.errorStack.push(move); // this wrong move
+          const firstMove = this.pendingHalfMove;
+          this.pendingHalfMove = null;
+          this.errorStack.push(firstMove);
+          this.errorStack.push(move);
         }
       } else if (move === expected) {
         // Exact match (single quarter turns, primes, or cube-reported doubles)
         this.position++;
-      } else if (isDoubleMove(expected) && move === expected.charAt(0)) {
-        // First quarter turn of a double move
-        this.pendingHalfTurn = true;
+      } else if (isDoubleMove(expected) && isQuarterTurnOf(expected, move)) {
+        // First quarter turn of a double move (R or R' both start R2)
+        this.pendingHalfMove = move;
       } else {
         this.errorStack.push(move);
       }
@@ -87,6 +87,12 @@ export class ScrambleTracker {
 
 function isDoubleMove(moveStr: string): boolean {
   return moveStr.endsWith("2");
+}
+
+function isQuarterTurnOf(doubleMove: string, move: string): boolean {
+  // "R2" can be done as R+R or R'+R'
+  const face = doubleMove.charAt(0);
+  return move === face || move === face + "'";
 }
 
 function invertMove(moveStr: string): string {

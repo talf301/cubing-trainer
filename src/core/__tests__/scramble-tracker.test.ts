@@ -67,6 +67,22 @@ describe("ScrambleTracker", () => {
       expect(tracker.state.isComplete).toBe(true);
     });
 
+    it("accepts two inverse quarter turns for a double move", () => {
+      const tracker = new ScrambleTracker("R2 U F");
+      tracker.onMove("R'"); // first quarter turn (inverse direction)
+      expect(tracker.state.scrambleMoves[0].completed).toBe(false);
+      tracker.onMove("R'"); // second quarter turn completes R2
+      expect(tracker.state.scrambleMoves[0].completed).toBe(true);
+      expect(tracker.state.mode).toBe("tracking");
+    });
+
+    it("rejects mixed directions for a double move", () => {
+      const tracker = new ScrambleTracker("R2 U F");
+      tracker.onMove("R"); // first quarter turn
+      tracker.onMove("R'"); // wrong — must match first direction
+      expect(tracker.state.mode).toBe("recovering");
+    });
+
     it("enters error recovery when wrong move during pending half turn", () => {
       const tracker = new ScrambleTracker("R2 U F");
       tracker.onMove("R"); // first quarter turn of R2
