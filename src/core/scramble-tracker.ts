@@ -15,6 +15,8 @@ export class ScrambleTracker {
 
   constructor(scramble: string) {
     this.moves = scramble.split(/\s+/).filter((s) => s.length > 0);
+    console.log("[ScrambleTracker] scramble string:", JSON.stringify(scramble));
+    console.log("[ScrambleTracker] parsed moves:", this.moves.map(m => JSON.stringify(m)));
   }
 
   get state(): ScrambleTrackerState {
@@ -30,6 +32,11 @@ export class ScrambleTracker {
   }
 
   onMove(move: string): void {
+    console.log("[ScrambleTracker] onMove called with:", JSON.stringify(move));
+    console.log("[ScrambleTracker] expected move:", JSON.stringify(this.moves[this.position]));
+    console.log("[ScrambleTracker] move char codes:", [...move].map(c => c.charCodeAt(0)));
+    console.log("[ScrambleTracker] expected char codes:", this.position < this.moves.length ? [...this.moves[this.position]].map(c => c.charCodeAt(0)) : "N/A");
+    console.log("[ScrambleTracker] match?", move === this.moves[this.position]);
     if (this.errorStack.length > 0) {
       // In recovery mode
       const expectedFix = invertMove(this.errorStack[this.errorStack.length - 1]);

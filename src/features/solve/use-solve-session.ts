@@ -122,6 +122,7 @@ export function useSolveSession(connection: CubeConnection) {
 
     const onMove = (event: CubeMoveEvent) => {
       const moveStr = event.move.toString();
+      console.log("[onMove] event.move:", event.move, "toString:", JSON.stringify(moveStr), "charCodes:", [...moveStr].map(c => c.charCodeAt(0)));
 
       if (session.phase === "scrambling") {
         // Feed move to tracker for progress display
