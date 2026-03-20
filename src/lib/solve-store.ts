@@ -1,9 +1,5 @@
 import { getDB } from "./db";
-
-export interface TimestampedMove {
-  move: string;
-  timestamp: number;
-}
+import type { TimestampedMove } from "@/core/solve-session";
 
 export interface StoredSolve {
   id: string;
