@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { cube3x3x3 } from "cubing/puzzles";
-import { buildFaceGeometry, isCrossSolved, isF2LSolved, isOLLSolved, segmentSolve, type CfopSplits } from "../cfop-segmenter";
+import { buildFaceGeometry, isCrossSolved, isF2LSolved, isOLLSolved, segmentSolve } from "../cfop-segmenter";
 import type { TimestampedMove } from "../solve-session";
 
 describe("buildFaceGeometry", () => {
