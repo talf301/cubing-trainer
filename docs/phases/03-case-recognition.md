@@ -43,4 +43,4 @@ CFOP phase boundary is crossed. Store per-phase split times on the solve record.
   No UI or persistence dependency — lives in `core/`.
 
 ## Status
-backlog
+in-progress

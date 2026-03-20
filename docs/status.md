@@ -1,10 +1,10 @@
 # Project Status
 
 ## Current state
-Phases 0–2 complete. Ready to start Phase 3 (Case Recognition).
+Phases 0–2 complete. Phase 3 (CFOP Segmentation) in progress.
 
 ## Active phases
-None
+- Phase 3: CFOP Segmentation
 
 ## Completed phases
 - Phase 0: Project Scaffolding
