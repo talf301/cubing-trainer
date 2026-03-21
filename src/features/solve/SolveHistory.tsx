@@ -14,7 +14,7 @@ function formatTime(ms: number): string {
 function SplitTimes({ solve }: { solve: StoredSolve }) {
   if (!solve.splits?.crossTime) return null;
 
-  const { crossTime, f2lTime, ollTime } = solve.splits;
+  const { crossTime, f2lTime, ollTime, ollCase, pllCase } = solve.splits;
   const pllTime = solve.duration;
 
   // Calculate phase durations (time spent in each phase)
@@ -39,13 +39,19 @@ function SplitTimes({ solve }: { solve: StoredSolve }) {
       {ollDuration !== undefined && (
         <>
           <span className="text-gray-700">|</span>
-          <span title="OLL">{formatTime(ollDuration)}</span>
+          <span title={ollCase ?? "OLL"}>
+            {formatTime(ollDuration)}
+            {ollCase && <span className="text-gray-400 ml-1">({ollCase})</span>}
+          </span>
         </>
       )}
       {pllDuration !== undefined && (
         <>
           <span className="text-gray-700">|</span>
-          <span title="PLL">{formatTime(pllDuration)}</span>
+          <span title={pllCase ?? "PLL"}>
+            {formatTime(pllDuration)}
+            {pllCase && <span className="text-gray-400 ml-1">({pllCase})</span>}
+          </span>
         </>
       )}
     </div>
