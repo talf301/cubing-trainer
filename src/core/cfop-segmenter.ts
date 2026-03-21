@@ -134,6 +134,8 @@ async function getGeometry(): Promise<{ kpuzzle: KPuzzle; geometry: FaceGeometry
   return { kpuzzle, geometry: cachedGeometry };
 }
 
+const F2L_CHECK_ORDER = [5, 0, 1, 2, 3, 4] as const; // D first for tiebreaking
+
 export async function segmentSolve(
   scramble: string,
   moves: TimestampedMove[],
@@ -144,35 +146,57 @@ export async function segmentSolve(
 
     let state = kpuzzle.defaultPattern().applyAlg(scramble);
     let crossFaceIdx: number | null = null;
+    const crossTimes: (number | null)[] = [null, null, null, null, null, null];
     let f2lState: KPattern | null = null;
     let ollState: KPattern | null = null;
 
     for (const { move, timestamp } of moves) {
       state = state.applyMove(move);
 
-      // Phase 1: Detect cross on D face (standard CFOP cross)
       if (crossFaceIdx === null) {
-        if (isCrossSolved(state, geometry, 5)) {
-          crossFaceIdx = 5;
-          splits.crossTime = timestamp;
-          splits.crossFace = "D";
+        // Track cross completion on all 6 faces
+        for (let f = 0; f < 6; f++) {
+          if (crossTimes[f] === null && isCrossSolved(state, geometry, f)) {
+            crossTimes[f] = timestamp;
+          }
+        }
+
+        // Confirm cross face via F2L detection (check D first for tiebreaking)
+        // Also require cross is currently solved (not just historically)
+        for (const f of F2L_CHECK_ORDER) {
+          if (crossTimes[f] !== null && isCrossSolved(state, geometry, f) && isF2LSolved(state, geometry, f)) {
+            crossFaceIdx = f;
+            splits.crossTime = crossTimes[f]!;
+            splits.crossFace = FACE_NAMES[f];
+            splits.f2lTime = timestamp;
+            f2lState = state;
+            break;
+          }
         }
       }
 
-      // Phase 2: Detect F2L
-      if (crossFaceIdx !== null && splits.f2lTime === undefined) {
-        if (isF2LSolved(state, geometry, crossFaceIdx)) {
-          splits.f2lTime = timestamp;
-          f2lState = state;
-        }
-      }
-
-      // Phase 3: Detect OLL
+      // Detect OLL (only after F2L is confirmed)
       if (splits.f2lTime !== undefined && splits.ollTime === undefined) {
         if (isOLLSolved(state, geometry, crossFaceIdx!)) {
           splits.ollTime = timestamp;
           ollState = state;
         }
+      }
+    }
+
+    // Fallback: if F2L was never detected, use earliest cross (prefer D)
+    if (crossFaceIdx === null) {
+      let earliest: number | null = null;
+      for (const f of F2L_CHECK_ORDER) {
+        const t = crossTimes[f];
+        if (t !== null && (earliest === null || t < earliest)) {
+          earliest = t;
+          crossFaceIdx = f;
+        }
+      }
+      if (crossFaceIdx !== null) {
+        splits.crossTime = earliest!;
+        splits.crossFace = FACE_NAMES[crossFaceIdx];
       }
     }
 
@@ -185,7 +209,6 @@ export async function segmentSolve(
 
     return splits;
   } catch {
-    // Return empty splits if scramble/moves are malformed
     return {};
   }
 }
