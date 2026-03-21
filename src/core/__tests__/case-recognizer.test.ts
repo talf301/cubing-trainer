@@ -52,7 +52,7 @@ describe("OLL case fingerprints", () => {
   // and that applying the algorithm solves OLL
   it.each(Object.entries(OLL_CASES))(
     "%s: fingerprint matches generated state and algorithm solves OLL",
-    async (name, caseData: CaseFingerprint) => {
+    async (_name, caseData: CaseFingerprint) => {
       const kpuzzle = await cube3x3x3.kpuzzle();
       const solved = kpuzzle.defaultPattern();
 
@@ -125,7 +125,7 @@ describe("PLL case fingerprints", () => {
 
   it.each(Object.entries(PLL_CASES))(
     "%s: fingerprint matches generated state and algorithm solves PLL",
-    async (name, caseData) => {
+    async (_name, caseData) => {
       const kpuzzle = await cube3x3x3.kpuzzle();
       const solved = kpuzzle.defaultPattern();
 
