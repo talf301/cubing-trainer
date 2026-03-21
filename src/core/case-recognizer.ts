@@ -19,6 +19,11 @@ const ROTATION_TO_U: Record<number, string> = {
 };
 
 let cachedGeometry: FaceGeometry | null = null;
+// Home piece indices for U-face positions after each alignment rotation.
+// Maps each rotation to the pieces that should be at U-face positions in the solved state.
+// Used to normalize PLL piece indices to 0-3 for fingerprint matching.
+let cachedHomePieces: { edges: Map<number, number>; corners: Map<number, number> } | null = null;
+let cachedHomeCrossFace: string | null = null;
 
 async function getGeometry(): Promise<FaceGeometry> {
   if (!cachedGeometry) {
@@ -26,6 +31,39 @@ async function getGeometry(): Promise<FaceGeometry> {
     cachedGeometry = buildFaceGeometry(kpuzzle);
   }
   return cachedGeometry;
+}
+
+/**
+ * Get a mapping from absolute piece indices to relative 0-3 indices
+ * for the U-face positions after alignment for a given cross face.
+ * For D cross (no rotation), home pieces are [0,1,2,3] so mapping is identity.
+ * For U cross (x2 rotation), home pieces are [4-7] range, mapped to 0-3.
+ */
+async function getHomePieceMapping(
+  crossFace: string,
+  geometry: FaceGeometry,
+): Promise<{ edges: Map<number, number>; corners: Map<number, number> }> {
+  if (cachedHomePieces && cachedHomeCrossFace === crossFace) {
+    return cachedHomePieces;
+  }
+  const kpuzzle = await cube3x3x3.kpuzzle();
+  const solvedAligned = alignToU(kpuzzle.defaultPattern(), crossFace);
+  const edgePositions = geometry.faceEdges[0];
+  const cornerPositions = geometry.faceCorners[0];
+
+  const edges = new Map<number, number>();
+  edgePositions.forEach((pos, i) => {
+    edges.set(solvedAligned.patternData["EDGES"].pieces[pos], i);
+  });
+
+  const corners = new Map<number, number>();
+  cornerPositions.forEach((pos, i) => {
+    corners.set(solvedAligned.patternData["CORNERS"].pieces[pos], i);
+  });
+
+  cachedHomePieces = { edges, corners };
+  cachedHomeCrossFace = crossFace;
+  return cachedHomePieces;
 }
 
 function arraysEqual(a: number[], b: number[]): boolean {
@@ -91,6 +129,11 @@ export async function recognizePLL(
   const edgePositions = geometry.faceEdges[0]; // U face
   const cornerPositions = geometry.faceCorners[0]; // U face
 
+  // Normalize piece indices to 0-3 relative to the aligned solved state.
+  // For D cross, U-face home pieces are [0,1,2,3] so this is identity.
+  // For other cross faces, the home pieces differ (e.g., U cross → [4,5,6,7] range).
+  const homeMap = await getHomePieceMapping(crossFace, geometry);
+
   for (const [name, caseData] of Object.entries(PLL_CASES)) {
     for (let r = 0; r < 4; r++) {
       const rotated =
@@ -100,10 +143,10 @@ export async function recognizePLL(
               r === 1 ? "U" : r === 2 ? "U2" : "U'",
             );
       const edges = edgePositions.map(
-        (pos) => rotated.patternData["EDGES"].pieces[pos],
+        (pos) => homeMap.edges.get(rotated.patternData["EDGES"].pieces[pos])!,
       );
       const corners = cornerPositions.map(
-        (pos) => rotated.patternData["CORNERS"].pieces[pos],
+        (pos) => homeMap.corners.get(rotated.patternData["CORNERS"].pieces[pos])!,
       );
       if (arraysEqual(edges, caseData.edges) && arraysEqual(corners, caseData.corners)) {
         return name;

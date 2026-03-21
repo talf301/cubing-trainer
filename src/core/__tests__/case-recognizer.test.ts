@@ -45,11 +45,10 @@ describe("recognizeOLL", () => {
   it("recognizes OLL with cross on U (OLL face is D)", async () => {
     const kpuzzle = await cube3x3x3.kpuzzle();
     const solved = kpuzzle.defaultPattern();
-    // Standard OLL 27 state (for D cross / U OLL face)
+    // Construct a realistic U-cross OLL state: D-face pieces have OLL orientations.
+    // Conjugate inverse OLL alg by x2 to apply it to D layer instead of U layer.
     const inverseAlg = new Alg(OLL_CASES["OLL 27"].algorithm).invert();
-    const standardOllState = solved.applyAlg(inverseAlg);
-    // Apply x2 so that after the recognizer's x2 alignment, it sees the standard state
-    const ollState = standardOllState.applyAlg("x2");
+    const ollState = solved.applyAlg("x2").applyAlg(inverseAlg).applyAlg("x2");
     const result = await recognizeOLL(ollState, "U");
     expect(result).toBe("OLL 27");
   });
@@ -132,9 +131,10 @@ describe("recognizePLL", () => {
   it("recognizes PLL with cross on U (PLL face is D)", async () => {
     const kpuzzle = await cube3x3x3.kpuzzle();
     const solved = kpuzzle.defaultPattern();
+    // Construct a realistic U-cross PLL state: D-face pieces are in T-perm permutation.
+    // Conjugate inverse T-perm by x2 to apply it to D layer instead of U layer.
     const inverseAlg = new Alg(PLL_CASES["T"].algorithm).invert();
-    const standardPllState = solved.applyAlg(inverseAlg);
-    const pllState = standardPllState.applyAlg("x2");
+    const pllState = solved.applyAlg("x2").applyAlg(inverseAlg).applyAlg("x2");
     const result = await recognizePLL(pllState, "U");
     expect(result).toBe("T");
   });
