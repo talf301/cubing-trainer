@@ -204,7 +204,31 @@ export async function segmentSolve(
       splits.ollCase = await recognizeOLL(f2lState, splits.crossFace) ?? undefined;
     }
     if (ollState && splits.crossFace) {
-      splits.pllCase = await recognizePLL(ollState, splits.crossFace) ?? undefined;
+      const pllResult = await recognizePLL(ollState, splits.crossFace);
+      splits.pllCase = pllResult ?? undefined;
+      // DEBUG: remove after diagnosing PLL issue
+      const geometry = cachedGeometry!;
+      const oppFaceIdx = OPPOSITE_FACE[FACE_NAMES.indexOf(splits.crossFace as (typeof FACE_NAMES)[number])];
+      const edgePositions = geometry.faceEdges[oppFaceIdx];
+      const cornerPositions = geometry.faceCorners[oppFaceIdx];
+      console.log("[segmentSolve DEBUG]", {
+        crossFace: splits.crossFace,
+        ollTime: splits.ollTime,
+        f2lTime: splits.f2lTime,
+        pllResult,
+        ollCase: splits.ollCase,
+        ollStateEdgePieces: edgePositions.map(p => ollState!.patternData["EDGES"].pieces[p]),
+        ollStateEdgeOrient: edgePositions.map(p => ollState!.patternData["EDGES"].orientation[p]),
+        ollStateCornerPieces: cornerPositions.map(p => ollState!.patternData["CORNERS"].pieces[p]),
+        ollStateCornerOrient: cornerPositions.map(p => ollState!.patternData["CORNERS"].orientation[p]),
+      });
+    } else {
+      // DEBUG: remove after diagnosing PLL issue
+      console.log("[segmentSolve DEBUG] no ollState or crossFace", {
+        hasOllState: !!ollState,
+        crossFace: splits.crossFace,
+        splits,
+      });
     }
 
     return splits;
