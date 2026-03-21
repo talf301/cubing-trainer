@@ -1,5 +1,6 @@
 import type { KPattern, KPuzzle } from "cubing/kpuzzle";
 import { cube3x3x3 } from "cubing/puzzles";
+import { recognizeOLL, recognizePLL } from "./case-recognizer";
 import type { TimestampedMove } from "./solve-session";
 
 const FACE_NAMES = ["U", "L", "F", "R", "B", "D"] as const;
@@ -118,6 +119,8 @@ export interface CfopSplits {
   f2lTime?: number;
   ollTime?: number;
   crossFace?: string;  // "U", "L", "F", "R", "B", "D"
+  ollCase?: string;    // e.g., "OLL 27"
+  pllCase?: string;    // e.g., "T"
 }
 
 // Cache geometry since it's the same for every 3x3 solve
@@ -141,6 +144,8 @@ export async function segmentSolve(
 
     let state = kpuzzle.defaultPattern().applyAlg(scramble);
     let crossFaceIdx: number | null = null;
+    let f2lState: KPattern | null = null;
+    let ollState: KPattern | null = null;
 
     for (const { move, timestamp } of moves) {
       state = state.applyMove(move);
@@ -161,6 +166,7 @@ export async function segmentSolve(
       if (crossFaceIdx !== null && splits.f2lTime === undefined) {
         if (isF2LSolved(state, geometry, crossFaceIdx)) {
           splits.f2lTime = timestamp;
+          f2lState = state;
         }
       }
 
@@ -168,8 +174,16 @@ export async function segmentSolve(
       if (splits.f2lTime !== undefined && splits.ollTime === undefined) {
         if (isOLLSolved(state, geometry, crossFaceIdx!)) {
           splits.ollTime = timestamp;
+          ollState = state;
         }
       }
+    }
+
+    if (f2lState && splits.crossFace) {
+      splits.ollCase = await recognizeOLL(f2lState, splits.crossFace) ?? undefined;
+    }
+    if (ollState && splits.crossFace) {
+      splits.pllCase = await recognizePLL(ollState, splits.crossFace) ?? undefined;
     }
 
     return splits;

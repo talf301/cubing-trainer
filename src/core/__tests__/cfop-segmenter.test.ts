@@ -240,6 +240,30 @@ describe("segmentSolve", () => {
     expect(["U", "L", "F", "R", "B", "D"]).toContain(splits.crossFace);
   });
 
+  it("detects OLL and PLL cases on a constructed solve", async () => {
+    // Build a scramble that breaks cross, F2L, OLL, and PLL so boundaries are
+    // detected at distinct points during the solution.
+    // Scramble = R (breaks F2L/cross) + Sune (breaks OLL) + T-perm (breaks PLL)
+    // Solution: T-perm inverse (= T-perm, self-inverse) + inverse-Sune + R'
+    const sune = "R U R' U R U2 R'";
+    const invSune = "R U2 R' U' R U' R'";
+    const tPerm = "R U R' U' R' F R2 U' R' U' R U R' F'";
+    const scramble = `R ${sune} ${tPerm}`;
+
+    const solutionStr = `${tPerm} ${invSune} R'`;
+    const solutionMoves = solutionStr.split(" ");
+    const moves: TimestampedMove[] = solutionMoves.map((m, i) => ({
+      move: m,
+      timestamp: (i + 1) * 100,
+    }));
+
+    const splits = await segmentSolve(scramble, moves);
+
+    expect(splits.crossTime).toBeDefined();
+    expect(splits.f2lTime).toBeDefined();
+    expect(splits.ollTime).toBeDefined();
+  });
+
   it("returns no splits if solve never completes cross", async () => {
     const splits = await segmentSolve("R U F D L B R2 U2 F2 D2", [
       { move: "R", timestamp: 100 },
