@@ -12,15 +12,15 @@ Identify which of the 57 OLL cases and 21 PLL cases occurred in each solve, stor
 against the solve record. F2L pair recognition is a stretch goal.
 
 ## Acceptance criteria
-- [ ] All 57 OLL cases are recognized correctly from cube state at OLL phase boundary
-- [ ] All 21 PLL cases are recognized correctly from cube state at PLL phase boundary
-- [ ] Cases are labelled with standard names (e.g. "OLL 33", "T-perm")
-- [ ] Case labels are stored on the solve record in IndexedDB
-- [ ] Recognition is deterministic — same state always produces same case label
-- [ ] Recognition handles AUF (adjustment of U face before/after) correctly for PLL
-- [ ] Case recognition runs retroactively on existing stored solves
-- [ ] Unit tests cover all 57 OLL cases and all 21 PLL cases with known cube states
-- [ ] **Stretch:** F2L pair cases are recognized for each of the 4 pairs per solve
+- [x] All 57 OLL cases are recognized correctly from cube state at OLL phase boundary
+- [x] All 21 PLL cases are recognized correctly from cube state at PLL phase boundary
+- [x] Cases are labelled with standard names (e.g. "OLL 33", "T-perm")
+- [x] Case labels are stored on the solve record in IndexedDB
+- [x] Recognition is deterministic — same state always produces same case label
+- [x] Recognition handles AUF (adjustment of U face before/after) correctly for PLL
+- [x] Case recognition runs retroactively on existing stored solves
+- [x] Unit tests cover all 57 OLL cases and all 21 PLL cases with known cube states
+- [ ] **Stretch:** F2L pair cases are recognized for each of the 4 pairs per solve (deferred)
 
 ## Out of scope
 - Training UI or drilling — that's Phase 5
@@ -41,4 +41,6 @@ against the solve record. F2L pair recognition is a stretch goal.
   Lives in `core/`, no UI or persistence dependency.
 
 ## Status
-backlog
+complete
+
+<!-- 2026-03-20: All acceptance criteria met. 57 OLL + 21 PLL fingerprints generated from standard algorithms, verified by tests (apply alg to fingerprint state → assert solved). Recognizer functions with AUF normalization via face moves. Integrated into segmentSolve, backfill for existing solves, case names displayed in solve history UI. ADR-002 documents approach. F2L recognition deferred. -->

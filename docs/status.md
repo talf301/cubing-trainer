@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current state
-Phases 0–3 complete. Phase 4 (Case Recognition) next.
+Phases 0–4 complete. Phase 5 (Training Experience) next.
 
 ## Active phases
 None
@@ -11,6 +11,7 @@ None
 - Phase 1: Bluetooth + Cube State
 - Phase 2: Scrambles + Solve Detection
 - Phase 3: CFOP Segmentation
+- Phase 4: Case Recognition
 
 ## Blockers
 None
