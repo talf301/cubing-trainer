@@ -3,6 +3,45 @@ import { cube3x3x3 } from "cubing/puzzles";
 import { Alg } from "cubing/alg";
 import { OLL_CASES, type CaseFingerprint } from "../oll-cases";
 import { PLL_CASES } from "../pll-cases";
+import { recognizeOLL } from "../case-recognizer";
+
+describe("recognizeOLL", () => {
+  it("recognizes Sune (OLL 27) from solved + inverse applied", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const solved = kpuzzle.defaultPattern();
+    const inverseAlg = new Alg(OLL_CASES["OLL 27"].algorithm).invert();
+    const ollState = solved.applyAlg(inverseAlg);
+    const result = await recognizeOLL(ollState, "D");
+    expect(result).toBe("OLL 27");
+  });
+
+  it("recognizes OLL case with AUF (U pre-move)", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const solved = kpuzzle.defaultPattern();
+    const inverseAlg = new Alg(OLL_CASES["OLL 27"].algorithm).invert();
+    const ollState = solved.applyAlg(inverseAlg).applyMove("U");
+    const result = await recognizeOLL(ollState, "D");
+    expect(result).toBe("OLL 27");
+  });
+
+  it("recognizes all 57 OLL cases", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const solved = kpuzzle.defaultPattern();
+    for (const [name, caseData] of Object.entries(OLL_CASES)) {
+      const inverseAlg = new Alg(caseData.algorithm).invert();
+      const ollState = solved.applyAlg(inverseAlg);
+      const result = await recognizeOLL(ollState, "D");
+      expect(result).toBe(name);
+    }
+  });
+
+  it("returns null for solved cube (no OLL needed)", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const solved = kpuzzle.defaultPattern();
+    const result = await recognizeOLL(solved, "D");
+    expect(result).toBeNull();
+  });
+});
 
 describe("OLL case fingerprints", () => {
   it("contains exactly 57 cases", () => {
