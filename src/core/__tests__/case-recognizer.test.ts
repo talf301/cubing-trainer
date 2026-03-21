@@ -41,6 +41,18 @@ describe("recognizeOLL", () => {
     const result = await recognizeOLL(solved, "D");
     expect(result).toBeNull();
   });
+
+  it("recognizes OLL with cross on U (OLL face is D)", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const solved = kpuzzle.defaultPattern();
+    // Standard OLL 27 state (for D cross / U OLL face)
+    const inverseAlg = new Alg(OLL_CASES["OLL 27"].algorithm).invert();
+    const standardOllState = solved.applyAlg(inverseAlg);
+    // Apply x2 so that after the recognizer's x2 alignment, it sees the standard state
+    const ollState = standardOllState.applyAlg("x2");
+    const result = await recognizeOLL(ollState, "U");
+    expect(result).toBe("OLL 27");
+  });
 });
 
 describe("OLL case fingerprints", () => {
@@ -115,6 +127,16 @@ describe("recognizePLL", () => {
     const solved = kpuzzle.defaultPattern();
     const result = await recognizePLL(solved, "D");
     expect(result).toBeNull();
+  });
+
+  it("recognizes PLL with cross on U (PLL face is D)", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const solved = kpuzzle.defaultPattern();
+    const inverseAlg = new Alg(PLL_CASES["T"].algorithm).invert();
+    const standardPllState = solved.applyAlg(inverseAlg);
+    const pllState = standardPllState.applyAlg("x2");
+    const result = await recognizePLL(pllState, "U");
+    expect(result).toBe("T");
   });
 });
 
