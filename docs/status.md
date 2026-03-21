@@ -1,15 +1,16 @@
 # Project Status
 
 ## Current state
-Phases 0–2 complete. Phase 3 (CFOP Segmentation) in progress.
+Phases 0–3 complete. Phase 4 (Case Recognition) next.
 
 ## Active phases
-- Phase 3: CFOP Segmentation
+None
 
 ## Completed phases
 - Phase 0: Project Scaffolding
 - Phase 1: Bluetooth + Cube State
 - Phase 2: Scrambles + Solve Detection
+- Phase 3: CFOP Segmentation
 
 ## Blockers
 None

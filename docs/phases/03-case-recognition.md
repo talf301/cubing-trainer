@@ -12,16 +12,16 @@ Replay a recorded solve's move sequence against KPuzzle state and detect when ea
 CFOP phase boundary is crossed. Store per-phase split times on the solve record.
 
 ## Acceptance criteria
-- [ ] Cross completion is detected: bottom-layer cross is solved (any cross color)
-- [ ] F2L completion is detected: all four F2L pairs are solved
-- [ ] OLL completion is detected: top face is a single color
-- [ ] PLL completion is detected: cube is fully solved (already handled by solve detection)
-- [ ] Phase boundaries are detected by replaying the move sequence against KPuzzle state
-- [ ] Per-phase split times are calculated from move timestamps at boundaries
-- [ ] Segmentation runs retroactively on existing stored solves
-- [ ] Solve history view shows per-phase split times
-- [ ] Cross color is auto-detected (not assumed to be white)
-- [ ] Unit tests cover phase boundary detection for each transition
+- [x] Cross completion is detected: bottom-layer cross is solved (any cross color)
+- [x] F2L completion is detected: all four F2L pairs are solved
+- [x] OLL completion is detected: top face is a single color
+- [x] PLL completion is detected: cube is fully solved (already handled by solve detection)
+- [x] Phase boundaries are detected by replaying the move sequence against KPuzzle state
+- [x] Per-phase split times are calculated from move timestamps at boundaries
+- [x] Segmentation runs retroactively on existing stored solves
+- [x] Solve history view shows per-phase split times
+- [x] Cross color is auto-detected (not assumed to be white)
+- [x] Unit tests cover phase boundary detection for each transition
 
 ## Out of scope
 - X-cross detection (cross + one F2L pair simultaneously)
@@ -43,4 +43,6 @@ CFOP phase boundary is crossed. Store per-phase split times on the solve record.
   No UI or persistence dependency — lives in `core/`.
 
 ## Status
-in-progress
+complete
+
+<!-- 2026-03-20: All acceptance criteria met. segmentSolve replays moves against KPuzzle, detects cross/F2L/OLL/PLL boundaries, auto-detects cross color across all 6 faces. 20 unit tests passing. Split times displayed in solve history. Backfill runs on mount for existing solves. -->
