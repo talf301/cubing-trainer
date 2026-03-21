@@ -3,7 +3,7 @@ import { cube3x3x3 } from "cubing/puzzles";
 import { Alg } from "cubing/alg";
 import { OLL_CASES, type CaseFingerprint } from "../oll-cases";
 import { PLL_CASES } from "../pll-cases";
-import { recognizeOLL } from "../case-recognizer";
+import { recognizeOLL, recognizePLL } from "../case-recognizer";
 
 describe("recognizeOLL", () => {
   it("recognizes Sune (OLL 27) from solved + inverse applied", async () => {
@@ -78,6 +78,44 @@ describe("OLL case fingerprints", () => {
       }
     },
   );
+});
+
+describe("recognizePLL", () => {
+  it("recognizes T-perm", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const solved = kpuzzle.defaultPattern();
+    const inverseAlg = new Alg(PLL_CASES["T"].algorithm).invert();
+    const pllState = solved.applyAlg(inverseAlg);
+    const result = await recognizePLL(pllState, "D");
+    expect(result).toBe("T");
+  });
+
+  it("recognizes PLL case with AUF", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const solved = kpuzzle.defaultPattern();
+    const inverseAlg = new Alg(PLL_CASES["T"].algorithm).invert();
+    const pllState = solved.applyAlg(inverseAlg).applyMove("U");
+    const result = await recognizePLL(pllState, "D");
+    expect(result).toBe("T");
+  });
+
+  it("recognizes all 21 PLL cases", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const solved = kpuzzle.defaultPattern();
+    for (const [name, caseData] of Object.entries(PLL_CASES)) {
+      const inverseAlg = new Alg(caseData.algorithm).invert();
+      const pllState = solved.applyAlg(inverseAlg);
+      const result = await recognizePLL(pllState, "D");
+      expect(result).toBe(name);
+    }
+  });
+
+  it("returns null for solved cube (PLL skip)", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const solved = kpuzzle.defaultPattern();
+    const result = await recognizePLL(solved, "D");
+    expect(result).toBeNull();
+  });
 });
 
 describe("PLL case fingerprints", () => {
