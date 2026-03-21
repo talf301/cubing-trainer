@@ -262,6 +262,9 @@ describe("segmentSolve", () => {
     expect(splits.crossTime).toBeDefined();
     expect(splits.f2lTime).toBeDefined();
     expect(splits.ollTime).toBeDefined();
+    // OLL case should be recognized from the state at F2L completion
+    expect(splits.ollCase).toBeDefined();
+    expect(typeof splits.ollCase).toBe("string");
   });
 
   it("returns no splits if solve never completes cross", async () => {
