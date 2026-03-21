@@ -226,9 +226,9 @@ describe("segmentSolve", () => {
     const splits = await segmentSolve("D", [
       { move: "D'", timestamp: 200 },
     ]);
-    // The segmenter checks faces in order [U, L, F, R, B, D].
-    // After "D'" from scramble "D", all crosses are solved. First detected = U.
-    expect(splits.crossFace).toBe("U");
+    // The segmenter checks D first (preferred cross face for CFOP).
+    // After "D'" from scramble "D", all crosses are solved. D detected first.
+    expect(splits.crossFace).toBe("D");
     expect(splits.crossTime).toBe(200);
   });
 
@@ -265,6 +265,32 @@ describe("segmentSolve", () => {
     // OLL case should be recognized from the state at F2L completion
     expect(splits.ollCase).toBeDefined();
     expect(typeof splits.ollCase).toBe("string");
+  });
+
+  it("detects PLL case when solution is in CFOP order", async () => {
+    // Scramble: T-perm inverse + inverse-Sune + R (breaks PLL, OLL, cross/F2L)
+    // Solution (CFOP order): R' (fix cross/F2L) + Sune (fix OLL) + T-perm (fix PLL)
+    // T-perm is self-inverse, so T-perm inverse = T-perm
+    const sune = "R U R' U R U2 R'";
+    const tPerm = "R U R' U' R' F R2 U' R' U' R U R' F'";
+    const invSune = "R U2 R' U' R U' R'";
+    const scramble = `${tPerm} ${invSune} R`;
+    const solutionStr = `R' ${sune} ${tPerm}`;
+    const solutionMoves = solutionStr.split(" ");
+    const moves: TimestampedMove[] = solutionMoves.map((m, i) => ({
+      move: m,
+      timestamp: (i + 1) * 100,
+    }));
+
+    const splits = await segmentSolve(scramble, moves);
+
+    expect(splits.crossFace).toBe("D");
+    expect(splits.crossTime).toBeDefined();
+    expect(splits.f2lTime).toBeDefined();
+    expect(splits.ollTime).toBeDefined();
+    expect(splits.ollCase).toBeDefined();
+    expect(splits.pllCase).toBeDefined();
+    expect(typeof splits.pllCase).toBe("string");
   });
 
   it("returns no splits if solve never completes cross", async () => {

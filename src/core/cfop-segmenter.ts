@@ -5,6 +5,8 @@ import type { TimestampedMove } from "./solve-session";
 
 const FACE_NAMES = ["U", "L", "F", "R", "B", "D"] as const;
 const OPPOSITE_FACE = [5, 3, 4, 1, 2, 0] as const; // U↔D, L↔R, F↔B
+// Check D first since virtually all CFOP solvers use D cross
+const CROSS_CHECK_ORDER = [5, 0, 1, 2, 3, 4] as const;
 
 export interface FaceGeometry {
   faceEdges: number[][];   // faceEdges[faceIdx] = 4 edge positions
@@ -150,9 +152,9 @@ export async function segmentSolve(
     for (const { move, timestamp } of moves) {
       state = state.applyMove(move);
 
-      // Phase 1: Detect cross (check all 6 faces)
+      // Phase 1: Detect cross (check D first since most CFOP solvers use D cross)
       if (crossFaceIdx === null) {
-        for (let f = 0; f < 6; f++) {
+        for (const f of CROSS_CHECK_ORDER) {
           if (isCrossSolved(state, geometry, f)) {
             crossFaceIdx = f;
             splits.crossTime = timestamp;
