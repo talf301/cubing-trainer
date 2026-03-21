@@ -34,7 +34,10 @@ export class SolveStore {
   async backfillSplits(): Promise<void> {
     const all = await this.getAll();
     for (const solve of all) {
-      if (!solve.splits) {
+      const needsSegmentation = !solve.splits;
+      const needsCaseRecognition =
+        solve.splits?.ollTime !== undefined && !solve.splits.ollCase;
+      if (needsSegmentation || needsCaseRecognition) {
         const splits = await segmentSolve(solve.scramble, solve.moves);
         solve.splits = splits;
         await this.save(solve);

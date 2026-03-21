@@ -16,6 +16,8 @@ export interface AcubemyDB {
         f2lTime?: number;
         ollTime?: number;
         crossFace?: string;
+        ollCase?: string;
+        pllCase?: string;
       };
     };
     indexes: { "by-created": number };
