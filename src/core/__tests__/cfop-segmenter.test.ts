@@ -229,11 +229,36 @@ describe("segmentSolve", () => {
     expect(splits.crossTime).toBe(200);
   });
 
-  it("always reports D as cross face", async () => {
+  it("detects cross on U face when D cross is not yet solved at F2L confirmation", async () => {
+    // Scramble "D U R": D breaks D cross, U breaks U cross, R breaks more.
+    // Solution: R' undoes R (state=D+U, no cross solved), U' undoes U (state=D, U cross+F2L solved, D cross broken), D' (fully solved)
+    const splits = await segmentSolve("D U R", [
+      { move: "R'", timestamp: 100 },
+      { move: "U'", timestamp: 200 },
+      { move: "D'", timestamp: 300 },
+    ]);
+    expect(splits.crossFace).toBe("U");
+    expect(splits.crossTime).toBe(200);
+    expect(splits.f2lTime).toBe(200);
+  });
+
+  it("prefers D when multiple faces have cross and F2L at same time", async () => {
     const splits = await segmentSolve("R", [
       { move: "R'", timestamp: 100 },
     ]);
     expect(splits.crossFace).toBe("D");
+    expect(splits.crossTime).toBe(100);
+  });
+
+  it("falls back to earliest cross with D preference when F2L is never reached", async () => {
+    // E displaces equator edges, R breaks more. R' undoes R → state=solved+E.
+    // D and U crosses are solved (E doesn't affect them), but F2L broken for all faces.
+    const splits = await segmentSolve("E R", [
+      { move: "R'", timestamp: 100 },
+    ]);
+    expect(splits.crossFace).toBe("D");
+    expect(splits.crossTime).toBe(100);
+    expect(splits.f2lTime).toBeUndefined();
   });
 
   it("detects OLL and PLL cases when solution is in CFOP order", async () => {
