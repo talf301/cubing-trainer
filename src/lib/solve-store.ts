@@ -36,7 +36,8 @@ export class SolveStore {
     for (const solve of all) {
       const needsSegmentation = !solve.splits;
       const needsCaseRecognition =
-        solve.splits?.ollTime !== undefined && !solve.splits.ollCase;
+        solve.splits?.ollTime !== undefined &&
+        (!solve.splits.ollCase || !solve.splits.pllCase);
       if (needsSegmentation || needsCaseRecognition) {
         const splits = await segmentSolve(solve.scramble, solve.moves);
         solve.splits = splits;
