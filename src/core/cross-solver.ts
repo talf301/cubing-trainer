@@ -1,121 +1,90 @@
-import { KPattern } from "cubing/kpuzzle";
-import type { KPuzzle } from "cubing/kpuzzle";
-import type { Alg } from "cubing/alg";
-import { experimentalSolveTwips } from "cubing/search";
-import { buildFaceGeometry } from "./cfop-segmenter";
-
-/**
- * Build a KPattern where only the 4 cross edges for the given face are
- * constrained to their solved positions/orientations.  Every other piece
- * is "don't-care" (orientationMod = 1 means any orientation/piece matches).
- */
-function buildCrossTarget(kpuzzle: KPuzzle, faceIdx: number): KPattern {
-  const geometry = buildFaceGeometry(kpuzzle);
-  const crossEdges = new Set(geometry.faceEdges[faceIdx]);
-  const solved = kpuzzle.defaultPattern();
-
-  const numEdges = solved.patternData["EDGES"].pieces.length;
-  const numCorners = solved.patternData["CORNERS"].pieces.length;
-  const numCenters = solved.patternData["CENTERS"].pieces.length;
-
-  // Edges: constrain only the 4 cross edges to solved position+orientation
-  const edgePieces = new Array(numEdges).fill(0);
-  const edgeOrientation = new Array(numEdges).fill(0);
-  const edgeOrientationMod = new Array(numEdges).fill(1); // don't-care
-
-  for (const pos of crossEdges) {
-    edgePieces[pos] = solved.patternData["EDGES"].pieces[pos];
-    edgeOrientation[pos] = 0;
-    edgeOrientationMod[pos] = 0; // fully constrained
-  }
-
-  // Corners: all don't-care
-  const cornerPieces = new Array(numCorners).fill(0);
-  const cornerOrientation = new Array(numCorners).fill(0);
-  const cornerOrientationMod = new Array(numCorners).fill(1);
-
-  // Centers: all don't-care
-  const centerPieces = new Array(numCenters).fill(0);
-  const centerOrientation = new Array(numCenters).fill(0);
-  const centerOrientationMod = new Array(numCenters).fill(1);
-
-  return new KPattern(kpuzzle, {
-    EDGES: {
-      pieces: edgePieces,
-      orientation: edgeOrientation,
-      orientationMod: edgeOrientationMod,
-    },
-    CORNERS: {
-      pieces: cornerPieces,
-      orientation: cornerOrientation,
-      orientationMod: cornerOrientationMod,
-    },
-    CENTERS: {
-      pieces: centerPieces,
-      orientation: centerOrientation,
-      orientationMod: centerOrientationMod,
-    },
-  });
-}
+import type { KPattern, KPuzzle } from "cubing/kpuzzle";
+import { Alg } from "cubing/alg";
+import { buildFaceGeometry, isCrossSolved } from "./cfop-segmenter";
 
 const FACE_INDICES: Record<string, number> = {
   U: 0, L: 1, F: 2, R: 3, B: 4, D: 5,
 };
 
-export interface CrossSolverOptions {
-  timeoutMs?: number;
+const ALL_MOVES = [
+  "U", "U'", "U2", "D", "D'", "D2",
+  "R", "R'", "R2", "L", "L'", "L2",
+  "F", "F'", "F2", "B", "B'", "B2",
+];
+
+/**
+ * Hash just the cross-edge state for visited detection.
+ * Only the 4 cross edge positions and orientations matter — the rest
+ * of the cube is irrelevant for finding the optimal cross solution.
+ */
+function hashCrossState(pattern: KPattern, crossEdges: number[]): string {
+  const edges = pattern.patternData["EDGES"];
+  let hash = "";
+  for (const pos of crossEdges) {
+    hash += `${edges.pieces[pos]},${edges.orientation[pos]};`;
+  }
+  return hash;
 }
 
 /**
- * Find the optimal (shortest) solution for the cross on the given face.
+ * Find the optimal (shortest) solution for the cross on the given face
+ * using BFS. The cross state space is ~190K states, so BFS completes
+ * in milliseconds.
+ *
  * Defaults to U-face cross.
  */
 export async function solveOptimalCross(
   kpuzzle: KPuzzle,
   pattern: KPattern,
   crossFace: string = "U",
-  options: CrossSolverOptions = {},
 ): Promise<Alg> {
-  const { timeoutMs = 30_000 } = options;
-
   const faceIdx = FACE_INDICES[crossFace];
   if (faceIdx === undefined) {
     throw new Error(`Invalid cross face: ${crossFace}`);
   }
 
-  const targetPattern = buildCrossTarget(kpuzzle, faceIdx);
+  const geometry = buildFaceGeometry(kpuzzle);
+  const crossEdges = geometry.faceEdges[faceIdx];
 
-  console.log(`[cross-solver] Starting solve for ${crossFace}-face cross`);
+  // Check if already solved
+  if (isCrossSolved(pattern, geometry, faceIdx)) {
+    return new Alg();
+  }
+
   const startTime = performance.now();
 
-  const solverPromise = experimentalSolveTwips(kpuzzle, pattern, {
-    targetPattern,
-  });
+  const visited = new Set<string>();
+  visited.add(hashCrossState(pattern, crossEdges));
 
-  console.log(`[cross-solver] experimentalSolveTwips called, promise:`, solverPromise);
+  // BFS queue: [pattern, move sequence]
+  let queue: [KPattern, string[]][] = [[pattern, []]];
 
-  solverPromise.then(
-    (alg) => console.log(`[cross-solver] Solver resolved:`, alg.toString()),
-    (err) => console.error(`[cross-solver] Solver rejected:`, err),
-  );
+  while (queue.length > 0) {
+    const nextQueue: [KPattern, string[]][] = [];
 
-  let timeoutId: ReturnType<typeof setTimeout>;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error("Cross solver timed out")), timeoutMs);
-  });
+    for (const [state, moves] of queue) {
+      for (const move of ALL_MOVES) {
+        const newState = state.applyMove(move);
+        const hash = hashCrossState(newState, crossEdges);
 
-  try {
-    const result = await Promise.race([solverPromise, timeoutPromise]);
-    clearTimeout(timeoutId!);
+        if (visited.has(hash)) continue;
+        visited.add(hash);
 
-    const elapsed = (performance.now() - startTime).toFixed(0);
-    console.log(`[cross-solver] Solved in ${elapsed}ms: ${result.toString()}`);
+        if (isCrossSolved(newState, geometry, faceIdx)) {
+          const solution = [...moves, move];
+          const elapsed = (performance.now() - startTime).toFixed(0);
+          console.log(
+            `[cross-solver] Solved in ${elapsed}ms (${solution.length} moves, ${visited.size} states explored): ${solution.join(" ")}`,
+          );
+          return new Alg(solution.join(" "));
+        }
 
-    return result;
-  } catch (err) {
-    clearTimeout(timeoutId!);
-    const elapsed = (performance.now() - startTime).toFixed(0);
-    console.error(`[cross-solver] Failed after ${elapsed}ms:`, err);
-    throw err;
+        nextQueue.push([newState, [...moves, move]]);
+      }
+    }
+
+    queue = nextQueue;
   }
+
+  throw new Error("No cross solution found");
 }

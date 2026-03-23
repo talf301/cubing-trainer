@@ -1,23 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { cube3x3x3 } from "cubing/puzzles";
-import { Alg } from "cubing/alg";
 import { solveOptimalCross } from "../cross-solver";
-import { buildFaceGeometry } from "../cfop-segmenter";
-
-// Mock experimentalSolveTwips since cubing.js search workers
-// don't work in Vitest's jsdom/node environment
-vi.mock("cubing/search", () => ({
-  experimentalSolveTwips: vi.fn(),
-}));
-
-import { experimentalSolveTwips } from "cubing/search";
-const mockSolveTwips = vi.mocked(experimentalSolveTwips);
+import { buildFaceGeometry, isCrossSolved } from "../cfop-segmenter";
 
 describe("solveOptimalCross", () => {
-  beforeEach(() => {
-    mockSolveTwips.mockReset();
-  });
-
   it("throws for invalid cross face", async () => {
     const kpuzzle = await cube3x3x3.kpuzzle();
     const solved = kpuzzle.defaultPattern();
@@ -26,116 +12,77 @@ describe("solveOptimalCross", () => {
     );
   });
 
-  it("calls experimentalSolveTwips with a target pattern constraining only cross edges", async () => {
+  it("returns empty alg for already-solved cross", async () => {
     const kpuzzle = await cube3x3x3.kpuzzle();
     const solved = kpuzzle.defaultPattern();
-    mockSolveTwips.mockResolvedValue(new Alg(""));
+    const result = await solveOptimalCross(kpuzzle, solved, "U");
+    expect(result.toString()).toBe("");
+  });
 
-    await solveOptimalCross(kpuzzle, solved, "D");
+  it("solves a 1-move cross", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const solved = kpuzzle.defaultPattern();
+    // R disrupts one U-face cross edge
+    const scrambled = solved.applyMove("R");
 
-    expect(mockSolveTwips).toHaveBeenCalledOnce();
-    const [calledKpuzzle, calledPattern, options] = mockSolveTwips.mock.calls[0];
-    expect(calledKpuzzle).toBe(kpuzzle);
-    expect(calledPattern).toBe(solved);
-
-    // Verify the target pattern has orientationMod set correctly
-    const targetPattern = options!.targetPattern!;
-    const edges = targetPattern.patternData["EDGES"];
+    const result = await solveOptimalCross(kpuzzle, scrambled, "U");
+    // Verify the solution actually solves the cross
+    const afterSolve = scrambled.applyAlg(result);
     const geometry = buildFaceGeometry(kpuzzle);
-    const crossEdgeSet = new Set(geometry.faceEdges[5]); // D face
+    expect(isCrossSolved(afterSolve, geometry, 0)).toBe(true);
+    // Should be optimal (1 move)
+    expect(result.toString().split(" ").length).toBe(1);
+  });
 
-    // Cross edges should be fully constrained (orientationMod = 0)
-    for (const pos of crossEdgeSet) {
-      expect(edges.orientationMod![pos]).toBe(0);
-    }
+  it("solves a multi-move cross", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const solved = kpuzzle.defaultPattern();
+    const scrambled = solved.applyAlg("R U F' L2");
 
-    // Non-cross edges should be don't-care (orientationMod = 1)
-    for (let i = 0; i < edges.pieces.length; i++) {
-      if (!crossEdgeSet.has(i)) {
-        expect(edges.orientationMod![i]).toBe(1);
-      }
-    }
-
-    // All corners should be don't-care
-    const corners = targetPattern.patternData["CORNERS"];
-    for (let i = 0; i < corners.pieces.length; i++) {
-      expect(corners.orientationMod![i]).toBe(1);
-    }
+    const result = await solveOptimalCross(kpuzzle, scrambled, "U");
+    const afterSolve = scrambled.applyAlg(result);
+    const geometry = buildFaceGeometry(kpuzzle);
+    expect(isCrossSolved(afterSolve, geometry, 0)).toBe(true);
+    // Should be at most 4 moves (inverse of scramble)
+    expect(result.toString().split(" ").length).toBeLessThanOrEqual(4);
   });
 
   it("defaults to U-face cross", async () => {
     const kpuzzle = await cube3x3x3.kpuzzle();
     const solved = kpuzzle.defaultPattern();
-    mockSolveTwips.mockResolvedValue(new Alg(""));
+    const scrambled = solved.applyMove("R");
 
-    await solveOptimalCross(kpuzzle, solved);
-
-    const [, , options] = mockSolveTwips.mock.calls[0];
-    const targetPattern = options!.targetPattern!;
-    const edges = targetPattern.patternData["EDGES"];
+    // No face specified — should solve U-face cross
+    const result = await solveOptimalCross(kpuzzle, scrambled);
+    const afterSolve = scrambled.applyAlg(result);
     const geometry = buildFaceGeometry(kpuzzle);
-    const uCrossEdges = new Set(geometry.faceEdges[0]);
-
-    // U-face cross edges should be constrained
-    for (const pos of uCrossEdges) {
-      expect(edges.orientationMod![pos]).toBe(0);
-    }
+    expect(isCrossSolved(afterSolve, geometry, 0)).toBe(true);
   });
 
-  it("constrains U-face edges when crossFace is U", async () => {
+  it("solves D-face cross when specified", async () => {
     const kpuzzle = await cube3x3x3.kpuzzle();
     const solved = kpuzzle.defaultPattern();
-    mockSolveTwips.mockResolvedValue(new Alg(""));
+    const scrambled = solved.applyMove("R");
 
-    await solveOptimalCross(kpuzzle, solved, "U");
-
-    const [, , options] = mockSolveTwips.mock.calls[0];
-    const targetPattern = options!.targetPattern!;
-    const edges = targetPattern.patternData["EDGES"];
+    const result = await solveOptimalCross(kpuzzle, scrambled, "D");
+    const afterSolve = scrambled.applyAlg(result);
     const geometry = buildFaceGeometry(kpuzzle);
-    const uCrossEdges = new Set(geometry.faceEdges[0]);
-
-    // U-face cross edges should be constrained
-    for (const pos of uCrossEdges) {
-      expect(edges.orientationMod![pos]).toBe(0);
-    }
-
-    // Non-U-face edges should be don't-care
-    for (let i = 0; i < edges.pieces.length; i++) {
-      if (!uCrossEdges.has(i)) {
-        expect(edges.orientationMod![i]).toBe(1);
-      }
-    }
+    expect(isCrossSolved(afterSolve, geometry, 5)).toBe(true);
   });
 
-  it("returns the alg from experimentalSolveTwips", async () => {
+  it("finds optimal solution length", async () => {
     const kpuzzle = await cube3x3x3.kpuzzle();
     const solved = kpuzzle.defaultPattern();
-    const expectedAlg = new Alg("R U R'");
-    mockSolveTwips.mockResolvedValue(expectedAlg);
+    // R U disrupts cross; optimal undo is U' R' (2 moves)
+    const scrambled = solved.applyAlg("R U");
 
-    const result = await solveOptimalCross(kpuzzle, solved);
-    expect(result).toBe(expectedAlg);
-  });
+    const result = await solveOptimalCross(kpuzzle, scrambled, "U");
+    const moves = result.toString().split(" ");
+    expect(moves.length).toBeLessThanOrEqual(2);
 
-  it("rejects with timeout error if solver takes too long", async () => {
-    const kpuzzle = await cube3x3x3.kpuzzle();
-    const solved = kpuzzle.defaultPattern();
-    // Mock a solver that never resolves
-    mockSolveTwips.mockReturnValue(new Promise(() => {}));
-
-    await expect(
-      solveOptimalCross(kpuzzle, solved, "U", { timeoutMs: 50 }),
-    ).rejects.toThrow("Cross solver timed out");
-  });
-
-  it("uses default 30s timeout", async () => {
-    const kpuzzle = await cube3x3x3.kpuzzle();
-    const solved = kpuzzle.defaultPattern();
-    mockSolveTwips.mockResolvedValue(new Alg("R"));
-
-    // Just verify it resolves normally with default timeout
-    const result = await solveOptimalCross(kpuzzle, solved, "U");
-    expect(result.toString()).toBe("R");
+    // Verify it actually solves
+    const afterSolve = scrambled.applyAlg(result);
+    const geometry = buildFaceGeometry(kpuzzle);
+    expect(isCrossSolved(afterSolve, geometry, 0)).toBe(true);
   });
 });
