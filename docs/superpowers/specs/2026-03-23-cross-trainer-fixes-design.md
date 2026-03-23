@@ -25,11 +25,12 @@ Update tests that assert the default face.
 
 ### Fix 2: Cross solver debugging
 
-Add diagnostic logging around the `experimentalSolveTwips` call in `cross-trainer-session.ts`:
+Add diagnostic logging and a timeout around the `experimentalSolveTwips` call in `cross-solver.ts` (inside `solveOptimalCross`):
 - Log when the solver starts (with scramble and target face)
 - Log when the solver completes (with solution and elapsed time)
 - Add a timeout wrapper (e.g. 30 seconds) that rejects the promise with a clear error message rather than hanging forever
-- Surface solver errors in the UI state so the user sees "solver failed" instead of infinite loading
+
+Surface solver errors in `cross-trainer-session.ts` UI state so the user sees "solver failed" instead of infinite loading.
 
 ### Fix 3 & 4: MoveGuide utility class
 
@@ -44,20 +45,22 @@ interface MoveGuideState {
   mode: "tracking" | "recovering";
   position: number;
   isComplete: boolean;
-  pendingHalfMove: boolean;
-  recoveryMoves: string[];  // moves the user must perform to recover
+  pendingHalfMove: boolean;  // true in either mode when awaiting 2nd quarter turn of a double
+  recoveryMoves: string[];   // moves the user must perform to recover (inverted error stack)
 }
 
 class MoveGuide {
-  constructor(moves: string[]);
+  constructor(moves: string[]);  // takes pre-parsed face moves (no rotation filtering or string splitting)
 
   get state(): MoveGuideState;
-  get expectedMove(): string | null;
+  get expectedMove(): string | null;  // next expected move in tracking, next recovery move in recovering, null if complete
 
   onMove(move: string): void;
-  reset(): void;
+  reset(): void;  // returns to position 0, tracking mode, clears pendingHalfMove and error stack
 }
 ```
+
+**Internal representation:** The error stack stores collapsed move strings (e.g., "R2" not two "R" entries). `recoveryMoves` is derived by inverting each stack entry (top of stack first). `expectedMove` returns the first recovery move when in recovery mode.
 
 #### Tracking mode
 
@@ -82,9 +85,11 @@ This means:
 - User does R, R, R (error): stack = [R'], recovery shows "undo R"
 - User does R, R, R, R (error): stack = [], back to tracking (full rotation cancels)
 
-**Recovery matching:** The user must perform the inverse of the top stack entry. For double moves (R2), accept either two R's or two R' — use the same pending-half-move logic as tracking mode, but matching against the required recovery move instead.
+**Recovery matching:** The user must perform the inverse of the top stack entry. For single quarter turns (e.g., undo R requires R'), exact match only. For double moves (e.g., undo R2 requires R2), accept either two R's or two R' — use the same pending-half-move logic as tracking mode, but matching against the required recovery move instead.
 
 When the recovery move is performed, pop the stack entry. When the stack is empty, return to tracking mode.
+
+**Wrong move during recovery:** If the user performs the wrong move while recovering, it is pushed onto the error stack and collapsed with the top entry if same-face. Example: stack = [R2], user does U instead of R2 → stack = [R2, U]. User must undo U first, then R2.
 
 #### Shared helpers
 
@@ -98,6 +103,8 @@ Extract into `src/core/move-utils.ts`:
 - `buildMoveString(face: string, amount: number): string` — reconstruct move from face + amount
 
 These replace the duplicated private helpers currently in `scramble-tracker.ts`, `pll-learn-session.ts`, and `undo-alg.ts`.
+
+`invertMove` uses cubing.js's `Move.invert()` with normalization: strip trailing apostrophe from double moves (cubing.js produces "U2'" for U2 inverse, but U2 is self-inverse).
 
 #### Integration: ScrambleTracker
 
@@ -118,7 +125,9 @@ Replace `_position`, `_needsUndo`, and the `onMove` body:
 - `needsUndo` maps to `guide.state.mode === "recovering"` (the `recoveryMoves` array replaces the single `needsUndo` string)
 - On algorithm completion, call `guide.reset()`
 
-The `needsUndo` property type changes from `string | null` to `string[] | null` (recovery can require multiple undo moves). The PLL trainer UI needs a minor update to display recovery moves as a list.
+The `needsUndo` property type changes from `string | null` to `string[] | null` (recovery can require multiple undo moves). Consumers of `needsUndo`:
+- `src/features/pll-trainer/usePllTrainer.ts` — reads `learn.needsUndo` into React state, must update state type and display logic
+- `src/core/__tests__/pll-learn-session.test.ts` — assertions on `needsUndo` values must be updated
 
 #### Integration: undo-alg.ts
 
