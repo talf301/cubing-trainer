@@ -154,6 +154,33 @@ describe("ScrambleTracker", () => {
       tracker.onMove("U2"); // wrong
       expect(tracker.state.recoveryMoves).toEqual(["U2"]);
     });
+
+    it("collapses same-face recovery moves (R+R becomes undo R2)", () => {
+      const tracker = new ScrambleTracker("U F");
+      tracker.onMove("R"); // wrong
+      tracker.onMove("R"); // same face — collapses to R2
+      expect(tracker.state.recoveryMoves).toEqual(["R2"]);
+    });
+
+    it("four same-face wrong moves cancel out and return to tracking", () => {
+      const tracker = new ScrambleTracker("U F");
+      tracker.onMove("R");
+      tracker.onMove("R");
+      tracker.onMove("R");
+      tracker.onMove("R");
+      expect(tracker.state.mode).toBe("tracking");
+      expect(tracker.state.recoveryMoves).toEqual([]);
+    });
+
+    it("recovery from double-move error accepts two quarter turns as undo", () => {
+      const tracker = new ScrambleTracker("U F");
+      tracker.onMove("R");
+      tracker.onMove("R"); // stack = R2
+      expect(tracker.state.recoveryMoves).toEqual(["R2"]);
+      tracker.onMove("R"); // first half of undo R2
+      tracker.onMove("R"); // second half
+      expect(tracker.state.mode).toBe("tracking");
+    });
   });
 
   describe("state listener", () => {
