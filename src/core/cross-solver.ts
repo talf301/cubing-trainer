@@ -64,12 +64,12 @@ const FACE_INDICES: Record<string, number> = {
 
 /**
  * Find the optimal (shortest) solution for the cross on the given face.
- * Defaults to D-face cross.
+ * Defaults to U-face cross.
  */
 export async function solveOptimalCross(
   kpuzzle: KPuzzle,
   pattern: KPattern,
-  crossFace: string = "D",
+  crossFace: string = "U",
 ): Promise<Alg> {
   const faceIdx = FACE_INDICES[crossFace];
   if (faceIdx === undefined) {

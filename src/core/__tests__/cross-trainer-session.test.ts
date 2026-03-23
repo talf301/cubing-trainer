@@ -250,22 +250,22 @@ describe("CrossTrainerSession", () => {
     session.reset();
     expect(session.phase).toBe("idle");
     expect(session.scramble).toBe("");
-    expect(session.crossFace).toBe("D");
+    expect(session.crossFace).toBe("U");
     expect(session.moves).toHaveLength(0);
     expect(session.duration).toBe(0);
   });
 
-  it("defaults to D-face cross", async () => {
+  it("defaults to U-face cross", async () => {
     const session = new CrossTrainerSession();
     const { kpuzzle, solved } = await setup();
     const scrambled = solved.applyMove("R");
 
     session.startScramble("R", scrambled, kpuzzle);
-    expect(session.crossFace).toBe("D");
+    expect(session.crossFace).toBe("U");
     expect(mockSolveOptimalCross).toHaveBeenCalledWith(
       kpuzzle,
       expect.anything(),
-      "D",
+      "U",
     );
   });
 });

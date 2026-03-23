@@ -29,7 +29,7 @@ const FACE_INDICES: Record<string, number> = {
 export class CrossTrainerSession {
   private _phase: CrossTrainerPhase = "idle";
   private _scramble: string = "";
-  private _crossFace: string = "D";
+  private _crossFace: string = "U";
   private expectedState: KPattern | null = null;
   private _moves: TimestampedMove[] = [];
   private solveStartTime: number = 0;
@@ -72,7 +72,7 @@ export class CrossTrainerSession {
     scramble: string,
     expectedState: KPattern,
     kpuzzle: KPuzzle,
-    crossFace: string = "D",
+    crossFace: string = "U",
   ): void {
     this._scramble = scramble;
     this.expectedState = expectedState;
@@ -144,7 +144,7 @@ export class CrossTrainerSession {
   reset(): void {
     this._phase = "idle";
     this._scramble = "";
-    this._crossFace = "D";
+    this._crossFace = "U";
     this.expectedState = null;
     this._moves = [];
     this.solveStartTime = 0;

@@ -63,7 +63,7 @@ describe("solveOptimalCross", () => {
     }
   });
 
-  it("defaults to D-face cross", async () => {
+  it("defaults to U-face cross", async () => {
     const kpuzzle = await cube3x3x3.kpuzzle();
     const solved = kpuzzle.defaultPattern();
     mockSolveTwips.mockResolvedValue(new Alg(""));
@@ -74,10 +74,10 @@ describe("solveOptimalCross", () => {
     const targetPattern = options!.targetPattern!;
     const edges = targetPattern.patternData["EDGES"];
     const geometry = buildFaceGeometry(kpuzzle);
-    const dCrossEdges = new Set(geometry.faceEdges[5]);
+    const uCrossEdges = new Set(geometry.faceEdges[0]);
 
-    // D-face cross edges should be constrained
-    for (const pos of dCrossEdges) {
+    // U-face cross edges should be constrained
+    for (const pos of uCrossEdges) {
       expect(edges.orientationMod![pos]).toBe(0);
     }
   });
