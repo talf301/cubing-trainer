@@ -117,4 +117,25 @@ describe("solveOptimalCross", () => {
     const result = await solveOptimalCross(kpuzzle, solved);
     expect(result).toBe(expectedAlg);
   });
+
+  it("rejects with timeout error if solver takes too long", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const solved = kpuzzle.defaultPattern();
+    // Mock a solver that never resolves
+    mockSolveTwips.mockReturnValue(new Promise(() => {}));
+
+    await expect(
+      solveOptimalCross(kpuzzle, solved, "U", { timeoutMs: 50 }),
+    ).rejects.toThrow("Cross solver timed out");
+  });
+
+  it("uses default 30s timeout", async () => {
+    const kpuzzle = await cube3x3x3.kpuzzle();
+    const solved = kpuzzle.defaultPattern();
+    mockSolveTwips.mockResolvedValue(new Alg("R"));
+
+    // Just verify it resolves normally with default timeout
+    const result = await solveOptimalCross(kpuzzle, solved, "U");
+    expect(result.toString()).toBe("R");
+  });
 });

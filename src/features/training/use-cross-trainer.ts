@@ -106,7 +106,10 @@ export function useCrossTrainer(connection: CubeConnection) {
         lastSolveDurationRef.current = session.duration;
 
         // Fetch result (includes awaiting optimal solution)
-        session.getResult().then(setResult);
+        session.getResult().then(setResult).catch((err) => {
+          console.error("[cross-trainer] Failed to get result:", err);
+          setResult(null);
+        });
       }
     };
 

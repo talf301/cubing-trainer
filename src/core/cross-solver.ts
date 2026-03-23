@@ -62,6 +62,10 @@ const FACE_INDICES: Record<string, number> = {
   U: 0, L: 1, F: 2, R: 3, B: 4, D: 5,
 };
 
+export interface CrossSolverOptions {
+  timeoutMs?: number;
+}
+
 /**
  * Find the optimal (shortest) solution for the cross on the given face.
  * Defaults to U-face cross.
@@ -70,13 +74,32 @@ export async function solveOptimalCross(
   kpuzzle: KPuzzle,
   pattern: KPattern,
   crossFace: string = "U",
+  options: CrossSolverOptions = {},
 ): Promise<Alg> {
+  const { timeoutMs = 30_000 } = options;
+
   const faceIdx = FACE_INDICES[crossFace];
   if (faceIdx === undefined) {
     throw new Error(`Invalid cross face: ${crossFace}`);
   }
+
   const targetPattern = buildCrossTarget(kpuzzle, faceIdx);
-  return experimentalSolveTwips(kpuzzle, pattern, {
+
+  console.log(`[cross-solver] Starting solve for ${crossFace}-face cross`);
+  const startTime = performance.now();
+
+  const solverPromise = experimentalSolveTwips(kpuzzle, pattern, {
     targetPattern,
   });
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error("Cross solver timed out")), timeoutMs);
+  });
+
+  const result = await Promise.race([solverPromise, timeoutPromise]);
+
+  const elapsed = (performance.now() - startTime).toFixed(0);
+  console.log(`[cross-solver] Solved in ${elapsed}ms: ${result.toString()}`);
+
+  return result;
 }
