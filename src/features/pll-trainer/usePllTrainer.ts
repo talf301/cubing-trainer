@@ -61,7 +61,7 @@ export function usePllTrainer(connection: CubeConnection) {
   const [learnPosition, setLearnPosition] = useState(0);
   const [learnReps, setLearnReps] = useState(0);
   const [learnCompletions, setLearnCompletions] = useState(0);
-  const [learnNeedsUndo, setLearnNeedsUndo] = useState<string | null>(null);
+  const [learnNeedsUndo, setLearnNeedsUndo] = useState<string[] | null>(null);
 
   // Load known cases on mount
   useEffect(() => {

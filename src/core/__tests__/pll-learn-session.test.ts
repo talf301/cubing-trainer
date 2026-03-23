@@ -70,17 +70,21 @@ describe("PllLearnSession", () => {
 
       // Wrong move
       session.onMove("U");
-      expect(session.needsUndo).toBe("U'");
+      expect(session.needsUndo).toEqual(["U'"]);
       expect(session.expectedMove).toBeNull();
 
-      // Wrong undo attempt — ignored
+      // Wrong undo attempt — now pushed onto error stack
       session.onMove("R");
-      expect(session.needsUndo).toBe("U'");
+      expect(session.needsUndo).toEqual(["R'", "U'"]);
+
+      // Undo the wrong attempt first
+      session.onMove("R'");
+      expect(session.needsUndo).toEqual(["U'"]);
 
       // Correct undo
       session.onMove("U'");
       expect(session.needsUndo).toBeNull();
-      expect(session.position).toBe(0); // still at same position
+      expect(session.position).toBe(0);
       expect(session.expectedMove).toBe("R");
     });
 
@@ -95,14 +99,50 @@ describe("PllLearnSession", () => {
       // Next expected: R'
       expect(session.expectedMove).toBe("R'");
       session.onMove("R"); // wrong — inverse of R is R'
-      expect(session.needsUndo).toBe("R'");
+      expect(session.needsUndo).toEqual(["R'"]);
     });
 
     it("wrong double move is self-inverse for undo", () => {
       const session = new PllLearnSession();
       session.startPractice("T");
       session.onMove("D2"); // wrong move
-      expect(session.needsUndo).toBe("D2");
+      expect(session.needsUndo).toEqual(["D2"]);
+    });
+
+    it("handles double move in algorithm via two quarter turns", () => {
+      const session = new PllLearnSession();
+      // Aa perm has R2 at the end: R' U R' D2 R U' R' D2 R2
+      session.startPractice("Aa");
+      const moves = [...session.faceMoves];
+      const r2Idx = moves.indexOf("R2");
+      expect(r2Idx).toBeGreaterThan(-1);
+
+      // Do all moves up to R2
+      for (let i = 0; i < r2Idx; i++) {
+        session.onMove(moves[i]);
+      }
+      expect(session.position).toBe(r2Idx);
+      expect(session.expectedMove).toBe("R2");
+
+      // Do R2 as two quarter turns — R2 is the last move so algorithm completes
+      session.onMove("R");
+      session.onMove("R");
+      // Algorithm completed: reps incremented, position reset to 0
+      expect(session.reps).toBe(1);
+      expect(session.position).toBe(0);
+    });
+
+    it("needsUndo returns string array for recovery moves", () => {
+      const session = new PllLearnSession();
+      session.startPractice("T");
+      session.onMove("U"); // wrong — expected R
+      expect(session.needsUndo).toEqual(["U'"]);
+    });
+
+    it("needsUndo returns null when no undo needed", () => {
+      const session = new PllLearnSession();
+      session.startPractice("T");
+      expect(session.needsUndo).toBeNull();
     });
 
     it("increments rep counter on algorithm completion", () => {

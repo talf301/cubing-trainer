@@ -312,7 +312,7 @@ function LearnView({
         {/* Undo warning */}
         {learnNeedsUndo && (
           <p className="text-amber-400">
-            Wrong move! Undo with: <span className="font-mono font-bold">{learnNeedsUndo}</span>
+            Wrong move! Undo with: <span className="font-mono font-bold">{learnNeedsUndo.join(" ")}</span>
           </p>
         )}
 
@@ -365,7 +365,7 @@ function LearnView({
         {/* Undo warning */}
         {learnNeedsUndo && (
           <p className="text-amber-400">
-            Wrong move! Undo with: <span className="font-mono font-bold">{learnNeedsUndo}</span>
+            Wrong move! Undo with: <span className="font-mono font-bold">{learnNeedsUndo.join(" ")}</span>
           </p>
         )}
 
