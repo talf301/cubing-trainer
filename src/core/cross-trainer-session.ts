@@ -36,7 +36,6 @@ export class CrossTrainerSession {
   private solveEndTime: number = 0;
   private phaseListeners = new Set<(phase: CrossTrainerPhase) => void>();
 
-  private kpuzzle: KPuzzle | null = null;
   private geometry: FaceGeometry | null = null;
   private solverPromise: Promise<Alg> | null = null;
 
@@ -77,7 +76,6 @@ export class CrossTrainerSession {
   ): void {
     this._scramble = scramble;
     this.expectedState = expectedState;
-    this.kpuzzle = kpuzzle;
     this._crossFace = crossFace;
     this._moves = [];
     this.solveStartTime = 0;
@@ -151,7 +149,6 @@ export class CrossTrainerSession {
     this._moves = [];
     this.solveStartTime = 0;
     this.solveEndTime = 0;
-    this.kpuzzle = null;
     this.geometry = null;
     this.solverPromise = null;
   }

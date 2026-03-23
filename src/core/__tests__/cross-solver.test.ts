@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { cube3x3x3 } from "cubing/puzzles";
 import { Alg } from "cubing/alg";
 import { solveOptimalCross } from "../cross-solver";
-import { buildFaceGeometry, isCrossSolved } from "../cfop-segmenter";
+import { buildFaceGeometry } from "../cfop-segmenter";
 
 // Mock experimentalSolveTwips since cubing.js search workers
 // don't work in Vitest's jsdom/node environment
