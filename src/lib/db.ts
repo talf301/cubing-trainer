@@ -22,16 +22,45 @@ export interface AcubemyDB {
     };
     indexes: { "by-created": number };
   };
+  pllKnownCases: {
+    key: string;
+    value: {
+      name: string;
+      addedAt: number;
+    };
+  };
+  pllAttempts: {
+    key: string;
+    value: {
+      id: string;
+      caseName: string;
+      time: number;
+      moveCount: number;
+      was2Look: boolean;
+      timestamp: number;
+    };
+    indexes: { "by-case": string; "by-timestamp": number };
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<AcubemyDB>> | null = null;
 
 export function getDB(): Promise<IDBPDatabase<AcubemyDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<AcubemyDB>("acubemy", 1, {
-      upgrade(db) {
-        const solveStore = db.createObjectStore("solves", { keyPath: "id" });
-        solveStore.createIndex("by-created", "createdAt");
+    dbPromise = openDB<AcubemyDB>("acubemy", 2, {
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          const solveStore = db.createObjectStore("solves", { keyPath: "id" });
+          solveStore.createIndex("by-created", "createdAt");
+        }
+        if (oldVersion < 2) {
+          db.createObjectStore("pllKnownCases", { keyPath: "name" });
+          const attemptStore = db.createObjectStore("pllAttempts", {
+            keyPath: "id",
+          });
+          attemptStore.createIndex("by-case", "caseName");
+          attemptStore.createIndex("by-timestamp", "timestamp");
+        }
       },
     });
   }

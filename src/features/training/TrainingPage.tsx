@@ -7,6 +7,11 @@ const TRAINING_TOOLS = [
     description: "Practice solving the cross with optimal solution comparison",
     path: "/training/cross",
   },
+  {
+    title: "PLL Trainer",
+    description: "Drill and learn all 21 PLL algorithms with smart case selection and move-by-move feedback",
+    path: "/training/pll",
+  },
 ];
 
 export function TrainingPage() {
