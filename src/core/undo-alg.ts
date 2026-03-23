@@ -1,15 +1,5 @@
 import { Alg, Move } from "cubing/alg";
-
-/**
- * Normalize a move amount to the range [-1, 0, 1, 2].
- * On a 3x3, R3 = R', R4 = identity, etc.
- */
-function normalizeAmount(amount: number): number {
-  const mod = ((amount % 4) + 4) % 4; // always 0–3
-  if (mod === 3) return -1; // R3 = R'
-  if (mod === 0) return 0;  // R4 = identity
-  return mod; // 1 or 2
-}
+import { normalizeAmount } from "./move-utils";
 
 /**
  * Get the "family key" for a move that determines if two moves operate
