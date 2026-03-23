@@ -69,15 +69,17 @@ idle → practicing ←→ (repeat)
 
 No scrambles are involved in learn mode. The user simply executes the algorithm on the cube repeatedly. The cube will end up in various states but learn mode only cares about the move sequence matching, not the cube state.
 
+**Rotation handling:** Some PLL algorithms contain whole-cube rotations (`x`, `y`, `z`). Smart cubes report face turns but not rotations. Learn mode skips rotation moves in the expected sequence and only validates face turns, trusting the user to adjust their grip correctly. Where possible, `PLL_CASES` should use rotation-free algorithm variants.
+
 ### Scramble generation for drill mode
 
 Drill mode needs scrambles that leave the cube with only a specific PLL case remaining (cross, F2L, and OLL all solved).
 
-**Approach:** Use the cubing.js solver (`experimentalSolveTwips`, same infrastructure as the cross trainer's `solveOptimalCross`) to find a move sequence that reaches the target PLL state. The target pattern is a solved cube with the PLL algorithm applied (plus a random AUF). Since only the U-layer is permuted, the search space is small and the solver runs fast.
+**Approach:** Take the inverse of the target PLL algorithm, with a random AUF (U, U', U2, or nothing) prepended and appended. This produces the correct PLL state without revealing which case it is through the scramble notation alone.
 
-The scramble is pre-computed during the review phase of the previous attempt (or on first load) to hide latency, following the same pattern as the cross trainer.
+To further disguise the case, the user is instructed to hold the cube with a **random color on top** when solving. The scramble is generated for white-on-top (standard), but the solving orientation is randomized. Since PLL recognition depends heavily on color patterns, a different orientation makes it much harder to identify the case from the scramble alone — which is exactly what we want for recognition practice.
 
-This produces natural-looking scrambles that don't reveal the target case (unlike using the PLL algorithm directly as the scramble).
+The scramble is computed instantly (no solver needed), so no latency-hiding is required.
 
 ### 2-look detection
 
@@ -104,7 +106,7 @@ Cases not in the known list are excluded from drill selection entirely.
 
 ## Data model
 
-New IndexedDB stores (schema version bump from 1 → 2):
+New IndexedDB stores (schema version bump from 1 → 2). This is purely additive — new object stores only, no changes to the existing `solves` store. No migration needed for existing data.
 
 ### `pllKnownCases` store
 
@@ -190,4 +192,5 @@ Grid of all 21 PLL case names as toggle chips. Selected = known (highlighted), u
 - **Algorithm variants** — currently each PLL has one algorithm from `PLL_CASES`. Users may prefer different algorithms; a future enhancement could let users customize their preferred algorithm per case.
 - **No recognition-only mode** — recognition is always combined with execution in drill mode. A dedicated recognition drill (identify the case without solving) could be added later.
 - **Weight formula tuning** — the case selection weights are initial values; they may need adjustment based on real usage.
-- **Cross face** — drill mode generates PLL states relative to D-face cross. Supporting other cross faces would require adapting the scramble generation.
+- **Cross face** — drill mode generates PLL states relative to D-face cross. Supporting other cross faces would require adapting the scramble generation. (Same limitation as the cross trainer; could be addressed together.)
+- **Minimum data thresholds** — the case selector uses stats from all attempts. Cases with very few attempts may have unreliable averages, but the low-attempt-count signal helps surface them for more data collection.
