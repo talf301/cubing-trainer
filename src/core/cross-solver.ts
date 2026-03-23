@@ -92,14 +92,30 @@ export async function solveOptimalCross(
     targetPattern,
   });
 
+  console.log(`[cross-solver] experimentalSolveTwips called, promise:`, solverPromise);
+
+  solverPromise.then(
+    (alg) => console.log(`[cross-solver] Solver resolved:`, alg.toString()),
+    (err) => console.error(`[cross-solver] Solver rejected:`, err),
+  );
+
+  let timeoutId: ReturnType<typeof setTimeout>;
   const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error("Cross solver timed out")), timeoutMs);
+    timeoutId = setTimeout(() => reject(new Error("Cross solver timed out")), timeoutMs);
   });
 
-  const result = await Promise.race([solverPromise, timeoutPromise]);
+  try {
+    const result = await Promise.race([solverPromise, timeoutPromise]);
+    clearTimeout(timeoutId!);
 
-  const elapsed = (performance.now() - startTime).toFixed(0);
-  console.log(`[cross-solver] Solved in ${elapsed}ms: ${result.toString()}`);
+    const elapsed = (performance.now() - startTime).toFixed(0);
+    console.log(`[cross-solver] Solved in ${elapsed}ms: ${result.toString()}`);
 
-  return result;
+    return result;
+  } catch (err) {
+    clearTimeout(timeoutId!);
+    const elapsed = (performance.now() - startTime).toFixed(0);
+    console.error(`[cross-solver] Failed after ${elapsed}ms:`, err);
+    throw err;
+  }
 }
