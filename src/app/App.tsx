@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./Layout";
-import { Timer, History, Training, Settings, Debug } from "./routes";
+import { Timer, History, Training, PllTrainerRoute, Settings, Debug } from "./routes";
 
 export default function App() {
   return (
@@ -10,6 +10,7 @@ export default function App() {
           <Route path="/" element={<Timer />} />
           <Route path="/history" element={<History />} />
           <Route path="/training" element={<Training />} />
+          <Route path="/training/pll" element={<PllTrainerRoute />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/debug" element={<Debug />} />
         </Route>
