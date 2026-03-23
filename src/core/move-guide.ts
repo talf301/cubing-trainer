@@ -111,9 +111,9 @@ export class MoveGuide {
         this._pendingRecoveryHalf = null;
         this.errorStack.pop();
       } else {
-        const firstMove = this._pendingRecoveryHalf;
+        // Stack entry was already updated to reflect the partial recovery,
+        // so only the wrong move is a new error (don't re-push the first half)
         this._pendingRecoveryHalf = null;
-        this.pushError(firstMove);
         this.pushError(move);
       }
     } else if (move === requiredMove) {

@@ -131,6 +131,19 @@ describe("MoveGuide", () => {
       expect(guide.state.recoveryMoves).toEqual(["D2", "R'"]);
     });
 
+    it("wrong second half during pending recovery preserves remaining error", () => {
+      const guide = new MoveGuide(["U"]);
+      // 3 R's = R' error, guide is pending recovery half
+      guide.onMove("R");
+      guide.onMove("R");
+      guide.onMove("R");
+      expect(guide.state.recoveryMoves).toEqual(["R"]);
+      // Wrong move instead of completing recovery
+      guide.onMove("U");
+      // R' error still there, plus new U error on top
+      expect(guide.state.recoveryMoves).toEqual(["U'", "R"]);
+    });
+
     it("handles multi-item stack recovery one at a time", () => {
       const guide = new MoveGuide(["U"]);
       guide.onMove("R");
