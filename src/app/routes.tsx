@@ -5,8 +5,10 @@ import { GanBluetoothConnection } from "@/features/bluetooth/gan-bluetooth-conne
 import { SolvePage } from "@/features/solve/SolvePage";
 import { SolveStore, type StoredSolve } from "@/lib/solve-store";
 import { SolveHistory as SolveHistoryList } from "@/features/solve/SolveHistory";
+import { TrainingPage } from "@/features/training/TrainingPage";
+import { CrossTrainer } from "@/features/training/CrossTrainer";
 
-// Shared connection instance — both Timer and Debug use the same cube
+// Shared connection instance — Timer, Debug, and Training all use the same cube
 const sharedConnection = new GanBluetoothConnection();
 const solveStore = new SolveStore();
 
@@ -30,7 +32,11 @@ function History() {
 }
 
 function Training() {
-  return <h1 className="text-2xl font-bold">Training</h1>;
+  return <TrainingPage />;
+}
+
+function TrainingCross() {
+  return <CrossTrainer connection={sharedConnection} />;
 }
 
 function Settings() {
@@ -41,4 +47,4 @@ function Debug() {
   return <BluetoothDebug connection={sharedConnection} />;
 }
 
-export { Timer, History, Training, Settings, Debug };
+export { Timer, History, Training, TrainingCross, Settings, Debug };
