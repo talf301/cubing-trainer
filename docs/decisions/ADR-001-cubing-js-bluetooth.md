@@ -20,7 +20,7 @@ Use the cubing.js bluetooth module.
 - **Reduced dependency surface:** One library instead of two. We're already committed to cubing.js for core logic.
 - **Unified abstraction:** cubing.js's `BluetoothPuzzle` interface is close to the `CubeConnection` abstraction we need, reducing the wrapper code we write.
 
-## Amendment (2026-03-19)
+## Amendment 1 (2026-03-19)
 
 ### What changed
 cubing.js's bluetooth module does not support the GAN 356i Carry E, which uses a Gen4
@@ -37,22 +37,45 @@ cube BLE communication while continuing to use cubing.js `KPuzzle` for state man
   `gan-web-bluetooth`; the existing `WebBluetoothCubeConnection` wraps cubing.js
   bluetooth for future non-GAN cube support.
 
-### Long-term plan
-Both libraries will likely be needed:
-- `gan-web-bluetooth` for GAN cubes (best GAN protocol support)
-- cubing.js bluetooth for Moyu, Giiker, and other brands (multi-brand unified interface)
+## Amendment 2 (2026-03-23)
 
-Each brand gets its own `CubeConnection` implementation. The abstraction already
-supports this — no architectural changes needed when adding new cube brands.
+### What changed
+Adding MoYu WRM V10/V11 AI smart cube support. cubing.js's bluetooth module does not
+support these models, so we ported a custom MoYu driver from cstimer's `moyu32cube.js`
+(GPLv3) rather than relying on cubing.js bluetooth for MoYu.
+
+### Current approach
+- **GAN cubes:** `gan-web-bluetooth` handles BLE connection and move events.
+- **MoYu cubes:** Custom driver (`MoYuBluetoothConnection`) ported from cstimer,
+  handling BLE communication, AES-128 encryption, facelet-to-KPattern conversion,
+  and move event parsing directly via Web Bluetooth API.
+- **State management:** cubing.js `KPuzzle` remains the single source of truth for
+  cube state across all cube brands.
+- **Abstraction:** `SmartCubeConnection` wraps brand-specific implementations
+  (`GanBluetoothConnection`, `MoYuBluetoothConnection`) behind a unified interface,
+  handling device selection and routing to the correct driver based on BLE
+  advertisement data.
+- **cubing.js bluetooth:** `WebBluetoothCubeConnection` is retained for potential
+  future use with other brands (Giiker, etc.) but is not actively used.
+
+### Long-term plan
+Each cube brand gets its own `CubeConnection` implementation, wrapped by
+`SmartCubeConnection`:
+- `gan-web-bluetooth` for GAN cubes (best GAN protocol support)
+- Custom MoYu driver for MoYu V10/V11 AI cubes (no suitable library exists)
+- cubing.js bluetooth remains available for other brands if/when needed
 
 ## Risks
-- Two BLE libraries increases the dependency surface.
-- Move notation may differ between libraries, requiring translation in each
+- Multiple BLE drivers (gan-web-bluetooth, custom MoYu, potentially cubing.js
+  bluetooth) increase the dependency and maintenance surface.
+- Move notation differs between drivers, requiring translation in each
   `CubeConnection` implementation.
+- The custom MoYu driver is our own code to maintain, unlike the library-backed
+  GAN driver.
 
 ## Consequences
-- Our `CubeConnection` abstraction wraps different BLE libraries per cube brand,
+- Our `CubeConnection` abstraction wraps different BLE drivers per cube brand,
   not a single unified library.
-- Adding support for new cube brands requires evaluating which BLE library to use
-  and writing a new `CubeConnection` implementation.
-- We accept both cubing.js and gan-web-bluetooth as dependencies.
+- Adding support for new cube brands requires evaluating whether an existing library
+  supports them or whether a custom driver is needed.
+- We accept gan-web-bluetooth, cubing.js, and our custom MoYu driver as the BLE stack.
