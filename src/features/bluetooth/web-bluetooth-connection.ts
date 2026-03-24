@@ -27,6 +27,8 @@ export class WebBluetoothCubeConnection implements CubeConnection {
     return this.currentState;
   }
 
+  readonly battery: number | null = null;
+
   async connect(): Promise<void> {
     if (this.currentStatus === "connecting") return;
 

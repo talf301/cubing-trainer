@@ -16,10 +16,14 @@ export interface CubeConnection {
 
   readonly status: ConnectionStatus;
   readonly state: KPattern | null;
+  readonly battery: number | null;
 
   addMoveListener(callback: (event: CubeMoveEvent) => void): void;
   removeMoveListener(callback: (event: CubeMoveEvent) => void): void;
 
   addStatusListener(callback: (status: ConnectionStatus) => void): void;
   removeStatusListener(callback: (status: ConnectionStatus) => void): void;
+
+  addBatteryListener?(callback: (level: number) => void): void;
+  removeBatteryListener?(callback: (level: number) => void): void;
 }
