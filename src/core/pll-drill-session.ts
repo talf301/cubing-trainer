@@ -4,6 +4,7 @@ import { cube3x3x3 } from "cubing/puzzles";
 import type { PllAttempt, PllStatsStore } from "@/lib/pll-stats-store";
 import { PLL_CASES } from "./pll-cases";
 import { recognizePLL } from "./case-recognizer";
+import { collapseMoves } from "./move-utils";
 
 export type DrillPhase =
   | "idle"
@@ -39,7 +40,6 @@ export class PllDrillSession {
   private _scramble: string = "";
   private _moves: TimestampedMove[] = [];
   private _was2Look: boolean = false;
-  private _moveCount: number = 0;
   private solveStartTime: number = 0;
   private solveEndTime: number = 0;
   private expectedState: KPattern | null = null;
@@ -68,7 +68,7 @@ export class PllDrillSession {
   }
 
   get moveCount(): number {
-    return this._moveCount;
+    return collapseMoves(this._moves.map((m) => m.move)).length;
   }
 
   get duration(): number {
@@ -113,7 +113,6 @@ export class PllDrillSession {
     // Reset solve state
     this._moves = [];
     this._was2Look = false;
-    this._moveCount = 0;
     this.solveStartTime = 0;
     this.solveEndTime = 0;
 
@@ -150,7 +149,6 @@ export class PllDrillSession {
 
     if (this._phase !== "solving") return;
 
-    this._moveCount++;
     this._moves.push({
       move,
       timestamp: timestamp - this.solveStartTime,
@@ -208,7 +206,7 @@ export class PllDrillSession {
       id: crypto.randomUUID(),
       caseName: this._currentCase,
       time: this.duration,
-      moveCount: this._moveCount,
+      moveCount: this.moveCount,
       was2Look: this._was2Look,
       timestamp: Date.now(),
     };
