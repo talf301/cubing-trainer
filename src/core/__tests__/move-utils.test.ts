@@ -7,6 +7,7 @@ import {
   isDoubleMove,
   isQuarterTurnOf,
   buildMoveString,
+  collapseMoves,
 } from "../move-utils";
 
 describe("move-utils", () => {
@@ -58,5 +59,29 @@ describe("move-utils", () => {
     it("R + 1 = R", () => expect(buildMoveString("R", 1)).toBe("R"));
     it("R + -1 = R'", () => expect(buildMoveString("R", -1)).toBe("R'"));
     it("R + 2 = R2", () => expect(buildMoveString("R", 2)).toBe("R2"));
+  });
+
+  describe("collapseMoves", () => {
+    it("collapses R R into R2", () => {
+      expect(collapseMoves(["R", "R"])).toEqual(["R2"]);
+    });
+    it("collapses R R R into R'", () => {
+      expect(collapseMoves(["R", "R", "R"])).toEqual(["R'"]);
+    });
+    it("cancels R R' into nothing", () => {
+      expect(collapseMoves(["R", "R'"])).toEqual([]);
+    });
+    it("cancels R R R R into nothing", () => {
+      expect(collapseMoves(["R", "R", "R", "R"])).toEqual([]);
+    });
+    it("does not collapse different faces", () => {
+      expect(collapseMoves(["R", "U"])).toEqual(["R", "U"]);
+    });
+    it("handles mixed sequence", () => {
+      expect(collapseMoves(["R", "R", "U", "U'", "F"])).toEqual(["R2", "F"]);
+    });
+    it("returns empty for empty input", () => {
+      expect(collapseMoves([])).toEqual([]);
+    });
   });
 });

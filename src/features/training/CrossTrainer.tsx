@@ -5,6 +5,7 @@ import { useCrossTrainer } from "./use-cross-trainer";
 import { ScrambleDisplay } from "@/features/solve/ScrambleDisplay";
 import { formatTime } from "@/features/solve/SolveHistory";
 import type { CrossTrainerResult } from "@/core/cross-trainer-session";
+import { collapseMoves } from "@/core/move-utils";
 
 interface CrossTrainerProps {
   connection: CubeConnection;
@@ -17,7 +18,7 @@ function ReviewPanel({
   result: CrossTrainerResult;
   onNext: () => void;
 }) {
-  const yourMoves = result.moves.map((m) => m.move);
+  const yourMoves = collapseMoves(result.moves.map((m) => m.move));
   const optimalMoves = result.optimalSolution.toString().split(/\s+/).filter(Boolean);
 
   return (
