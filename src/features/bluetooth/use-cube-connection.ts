@@ -14,6 +14,7 @@ export function useCubeConnection(connection: CubeConnection) {
   const [status, setStatus] = useState<ConnectionStatus>(connection.status);
   const [state, setState] = useState<KPattern | null>(connection.state);
   const [moves, setMoves] = useState<CubeMoveEvent[]>([]);
+  const [battery, setBattery] = useState<number | null>(connection.battery);
 
   useEffect(() => {
     const onStatus = (newStatus: ConnectionStatus) => {
@@ -25,12 +26,18 @@ export function useCubeConnection(connection: CubeConnection) {
       setMoves((prev) => [...prev, event].slice(-MAX_MOVE_HISTORY));
     };
 
+    const onBattery = (level: number) => {
+      setBattery(level);
+    };
+
     connection.addStatusListener(onStatus);
     connection.addMoveListener(onMove);
+    connection.addBatteryListener?.(onBattery);
 
     return () => {
       connection.removeStatusListener(onStatus);
       connection.removeMoveListener(onMove);
+      connection.removeBatteryListener?.(onBattery);
     };
   }, [connection]);
 
@@ -56,5 +63,5 @@ export function useCubeConnection(connection: CubeConnection) {
     setMoves([]);
   }, [connection]);
 
-  return { status, state, moves, error, connect, disconnect, resetState };
+  return { status, state, moves, battery, error, connect, disconnect, resetState };
 }

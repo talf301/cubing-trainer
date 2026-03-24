@@ -19,6 +19,7 @@ function createMockConnection(
   return {
     status: "disconnected" as ConnectionStatus,
     state: null,
+    battery: null,
     connect: vi.fn(async () => {}),
     disconnect: vi.fn(),
     resetState: vi.fn(),
