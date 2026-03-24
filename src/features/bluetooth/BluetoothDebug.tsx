@@ -15,7 +15,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function BluetoothDebug({ connection }: BluetoothDebugProps) {
-  const { status, moves, error, connect, disconnect, resetState } =
+  const { status, moves, battery, error, connect, disconnect, resetState } =
     useCubeConnection(connection);
   const [resetCount, setResetCount] = useState(0);
 
@@ -31,6 +31,9 @@ export function BluetoothDebug({ connection }: BluetoothDebugProps) {
       {/* Connection status */}
       <div className="flex items-center gap-4">
         <span className={`font-mono ${STATUS_COLORS[status]}`}>{status}</span>
+        {status === "connected" && battery != null && (
+          <span className="text-sm text-gray-300">Battery: {battery}%</span>
+        )}
         {(status === "disconnected" || status === "connecting") && (
           <button
             onClick={connect}

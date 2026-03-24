@@ -1,7 +1,7 @@
 // src/app/routes.tsx
 import { useState, useEffect } from "react";
 import { BluetoothDebug } from "@/features/bluetooth/BluetoothDebug";
-import { GanBluetoothConnection } from "@/features/bluetooth/gan-bluetooth-connection";
+import { SmartCubeConnection } from "@/features/bluetooth/smart-cube-connection";
 import { SolvePage } from "@/features/solve/SolvePage";
 import { SolveStore, type StoredSolve } from "@/lib/solve-store";
 import { SolveHistory as SolveHistoryList } from "@/features/solve/SolveHistory";
@@ -10,7 +10,7 @@ import { CrossTrainer } from "@/features/training/CrossTrainer";
 import { PllTrainer } from "@/features/pll-trainer/PllTrainer";
 
 // Shared connection instance — Timer, Debug, and Training all use the same cube
-const sharedConnection = new GanBluetoothConnection();
+const sharedConnection = new SmartCubeConnection();
 const solveStore = new SolveStore();
 
 function Timer() {

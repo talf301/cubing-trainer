@@ -19,6 +19,7 @@ export class GanBluetoothConnection implements CubeConnection {
 
   private moveListeners = new Set<(event: CubeMoveEvent) => void>();
   private statusListeners = new Set<(status: ConnectionStatus) => void>();
+  private batteryListeners = new Set<(level: number) => void>();
 
   get status(): ConnectionStatus {
     return this.currentStatus;
@@ -28,7 +29,7 @@ export class GanBluetoothConnection implements CubeConnection {
     return this.currentState;
   }
 
-  readonly battery: number | null = null;
+  battery: number | null = null;
 
   async connect(): Promise<void> {
     if (this.currentStatus === "connecting") return;
@@ -57,6 +58,8 @@ export class GanBluetoothConnection implements CubeConnection {
         (event: GanCubeEvent) => {
           if (event.type === "MOVE") {
             this.handleMove(event.move, event.timestamp);
+          } else if (event.type === "BATTERY") {
+            this.handleBattery(event.batteryLevel);
           } else if (event.type === "DISCONNECT") {
             this.setStatus("disconnected");
             this.cleanup();
@@ -99,6 +102,21 @@ export class GanBluetoothConnection implements CubeConnection {
 
   removeStatusListener(callback: (status: ConnectionStatus) => void): void {
     this.statusListeners.delete(callback);
+  }
+
+  addBatteryListener(callback: (level: number) => void): void {
+    this.batteryListeners.add(callback);
+  }
+
+  removeBatteryListener(callback: (level: number) => void): void {
+    this.batteryListeners.delete(callback);
+  }
+
+  private handleBattery(level: number): void {
+    this.battery = level;
+    for (const listener of this.batteryListeners) {
+      listener(level);
+    }
   }
 
   private handleMove(moveStr: string, timestamp: number): void {
