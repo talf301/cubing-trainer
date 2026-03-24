@@ -12,7 +12,7 @@ The app currently supports GAN smart cubes via `gan-web-bluetooth`. MoYu V10/V11
 
 ### New file: `src/features/bluetooth/moyu-bluetooth-connection.ts`
 
-A `CubeConnection` implementation for MoYu WRM V10/V11 AI cubes, ported from cstimer's `moyu32cube.js`.
+A `CubeConnection` implementation for MoYu WRM V10/V11 AI cubes, ported from cstimer's `moyu32cube.js`. Accepts a pre-selected `BluetoothDevice` via constructor (`new MoYuBluetoothConnection(device)`) so that `SmartCubeConnection` can control device selection. The `connect()` method handles GATT connection, service discovery, and protocol setup using the already-selected device.
 
 **BLE identifiers:**
 - Service UUID: `0783b03e-7735-b5a0-1760-a305d2795cb0`
@@ -72,36 +72,28 @@ Battery methods are optional (marked with `?`) so that `WebBluetoothCubeConnecti
 
 ### New file: `src/features/bluetooth/smart-cube-connection.ts`
 
-A `CubeConnection` wrapper that handles multi-brand device selection:
+A `CubeConnection` wrapper that presents a single "Connect" button for all supported cubes.
 
-1. `connect()` calls `navigator.bluetooth.requestDevice()` with combined filters:
-   - `{ namePrefix: "GAN" }` — GAN cubes
-   - `{ namePrefix: "MG" }` — GAN cubes (Monster Go)
-   - `{ namePrefix: "AiCube" }` — GAN/MoYu AI 2023
-   - `{ namePrefix: "WCU_MY3" }` — MoYu V10/V11
-   - `optionalServices`: all GAN service UUIDs + MoYu service UUID
-   - `optionalManufacturerData`: combined GAN + MoYu CIC lists
-2. Based on the selected device name, delegates to the appropriate connection class
-3. Forwards all `CubeConnection` methods to the active delegate
-4. On disconnect, clears the delegate so a different cube type can be selected next time
+**Approach:** `SmartCubeConnection.connect()` calls `navigator.bluetooth.requestDevice()` with combined filters for all supported cube brands:
+- `{ namePrefix: "GAN" }`, `{ namePrefix: "MG" }`, `{ namePrefix: "AiCube" }` — GAN cubes
+- `{ namePrefix: "WCU_MY3" }` — MoYu V10/V11
+- `optionalServices`: all GAN service UUIDs + MoYu service UUID
+
+After the user selects a device from the browser picker, `SmartCubeConnection` checks the device name:
+- **MoYu** (`WCU_MY3` prefix): passes the device directly to `MoYuBluetoothConnection` which handles GATT connection, service discovery, and protocol setup using the already-selected device
+- **GAN** (`GAN`/`MG`/`AiCube` prefix): calls `connectGanCube()` from `gan-web-bluetooth`, which opens a **second** BLE picker. The GAN cube will appear at the top since it was just selected. The user clicks it once more.
+
+**Why the GAN double-pick:** `gan-web-bluetooth`'s ESM bundle only exports `connectGanCube()` — the low-level APIs (protocol drivers, encrypters, `GanCubeClassicConnection.create()`) are not re-exported, so we cannot pass a pre-selected device to GAN code without forking the library. This is a known UX wart. A future PR to `gan-web-bluetooth` adding a `connectGanCubeFromDevice()` export would eliminate it.
+
+Other behavior:
+- Forwards all `CubeConnection` methods to the active delegate
+- On disconnect, clears the delegate so a different cube can be connected next time
 
 ### Modified file: `src/features/bluetooth/gan-bluetooth-connection.ts`
 
-Refactor to accept a pre-selected `BluetoothDevice` instead of calling `connectGanCube()`. This is feasible because `gan-web-bluetooth` exports all needed building blocks:
-
-- `GanCubeClassicConnection.create(device, commandChrct, stateChrct, encrypter, driver)` — creates connection from pre-selected device
-- `GanGen2ProtocolDriver`, `GanGen3ProtocolDriver`, `GanGen4ProtocolDriver` — protocol handlers
-- `GanGen2CubeEncrypter`, `GanGen3CubeEncrypter`, `GanGen4CubeEncrypter` — decryption
-- All service/characteristic UUID constants
-- `GAN_ENCRYPTION_KEYS`, `GAN_CIC_LIST`
-
-The device is passed via constructor (`new GanBluetoothConnection(device)`), not via `connect()`, so the `CubeConnection` interface contract (`connect(): Promise<void>`) is preserved. The `connect()` method then:
-1. Resolves MAC address via `watchAdvertisements()` (reimplemented, ~20 lines — the library's `autoRetrieveMacAddress` is not exported) with fallback to user prompt
-2. Connects GATT, discovers services, matches service UUID to protocol generation
-3. Creates encrypter + driver + `GanCubeClassicConnection.create()`
-4. Subscribes to events and emits `CubeMoveEvent`s as before
-
-Also adds battery support by handling `BATTERY` events from `gan-web-bluetooth` (already emitted, just not consumed currently).
+No major refactor needed. Changes are minimal:
+- Add `battery` property and battery listeners (handle `BATTERY` events from `gan-web-bluetooth`, already emitted but not consumed)
+- No changes to `connect()` — it continues to call `connectGanCube()` as before
 
 ### Modified file: `src/app/routes.tsx`
 
@@ -123,7 +115,7 @@ Show battery percentage in the debug page connection info area. Simple text disp
 
 ## ADR update
 
-ADR-001 will be amended to reflect that MoYu V10/V11 support is implemented as a custom driver ported from cstimer, rather than via cubing.js's `connectSmartPuzzle()` (which does not support these models). The two-library strategy remains: `gan-web-bluetooth` low-level APIs for GAN cubes, custom driver for MoYu, with both wrapped behind `SmartCubeConnection`.
+ADR-001 will be amended to reflect that MoYu V10/V11 support is implemented as a custom driver ported from cstimer, rather than via cubing.js's `connectSmartPuzzle()` (which does not support these models). The strategy becomes: `gan-web-bluetooth` (via `connectGanCube()`) for GAN cubes, custom driver for MoYu, with both wrapped behind `SmartCubeConnection`.
 
 ## Dependencies
 
