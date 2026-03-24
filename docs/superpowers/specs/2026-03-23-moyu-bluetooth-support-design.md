@@ -23,7 +23,7 @@ A `CubeConnection` implementation for MoYu WRM V10/V11 AI cubes, ported from cst
 **Encryption:**
 - AES-128, same scheme as GAN Gen2/3 but with MoYu-specific base keys
 - Key and IV derived from two compressed constants (pre-decompressed at build time, no `lz-string` dependency) XORed with the reversed 6-byte MAC address
-- MAC address extracted from BLE advertisement manufacturer data (last 6 bytes, reversed), with fallback to derivation from device name (`CF:30:16:00:XX:XX` from `WCU_MY32_XXXX`)
+- MAC address extracted from BLE advertisement manufacturer data (last 6 bytes, reversed), with fallback to derivation from device name (`CF:30:16:00:XX:XX` from `WCU_MY32_XXXX` — best-effort, only if name matches pattern). If neither method works, prompt user for MAC (same as GAN fallback)
 - Uses Web Crypto API (`SubtleCrypto`) for AES-128-ECB decryption. The CBC-like chaining is done manually (matching cstimer's approach)
 
 **Message types (opcode = first byte after decryption):**
@@ -32,15 +32,28 @@ A `CubeConnection` implementation for MoYu WRM V10/V11 AI cubes, ported from cst
 - `0xA4` (164) — Battery level: percentage in bits 8–16
 - `0xA5` (165) — Move event: move counter (8 bits), 5 moves (5 bits each), 5 timestamps (16 bits each, ms between moves). Move encoding: `m >> 1` indexes into `"FBUDLR"`, `m & 1` gives CW (0) or CCW (1)
 
+**Facelet-to-KPattern conversion:**
+
+The MoYu protocol provides facelets (sticker colors), not cubie data (CP/CO/EP/EO). Converting facelets to a `KPattern` requires decomposing the 54-facelet string into corner and edge pieces:
+
+1. Parse 144 bits into 54 facelets (48 sticker bits + 6 inserted centers) in URFDLB order
+2. For each of the 8 corner positions, read the 3 surrounding facelets and identify which corner piece occupies that slot and its orientation (0, 1, or 2). This produces `CORNERS.pieces[8]` and `CORNERS.orientation[8]`
+3. For each of the 12 edge positions, read the 2 surrounding facelets and identify which edge piece occupies that slot and its orientation (0 or 1). This produces `EDGES.pieces[12]` and `EDGES.orientation[12]`
+4. Construct a `KPattern` using `kpuzzle.defaultPattern()` and setting the `CORNERS` and `EDGES` orbit data
+5. **Validation:** After parsing, verify the state is reachable: total corner orientation mod 3 must equal 0, total edge orientation mod 2 must equal 0, and corner/edge permutation parity must match. If validation fails, log a warning and fall back to solved state
+
+Unit tests will cover known facelet strings (solved, superflip, T-perm, etc.) mapped to expected KPattern orbit data.
+
 **State management:**
-- On connection, request facelet state (opcode 163) and parse into a cubing.js `KPattern`
+- On connection, request facelet state (opcode 163) and parse into a cubing.js `KPattern` via the conversion above
 - On each move event, convert FBUDLR notation to standard URFDLB, create cubing.js `Move`, apply to `KPattern`, emit `CubeMoveEvent`
-- Handle move counter gaps (lost BLE events) by processing the most recent N moves from the 5-move buffer
+- Move counter gap handling (counter is 8-bit, use `(newCnt - prevCnt) & 0xFF` for wraparound):
+  - If gap is 1–5 moves: extract the missed moves from the 5-move buffer using the move counter delta
+  - If gap exceeds 5 moves: request a full facelet state resync (opcode 163) and reconstruct the `KPattern` from scratch
 - Track device timestamps with local time offset correction (same as cstimer)
 
-**Facelet-to-KPattern conversion:**
-- Parse 144 bits into 54 facelets (48 sticker bits + 6 inserted centers) in URFDLB order
-- Convert facelet string to `KPattern` by mapping sticker colors to piece positions/orientations using cubing.js utilities
+**Disconnect detection:**
+- Listen to `device.addEventListener('gattserverdisconnected', ...)` to detect BLE disconnection and transition status to "disconnected"
 
 ### Modified file: `src/core/cube-connection.ts`
 
@@ -50,10 +63,12 @@ Add optional battery support to the interface:
 export interface CubeConnection {
   // ... existing members ...
   readonly battery: number | null;
-  addBatteryListener(callback: (level: number) => void): void;
-  removeBatteryListener(callback: (level: number) => void): void;
+  addBatteryListener?(callback: (level: number) => void): void;
+  removeBatteryListener?(callback: (level: number) => void): void;
 }
 ```
+
+Battery methods are optional (marked with `?`) so that `WebBluetoothCubeConnection` (which doesn't support battery) doesn't need stub implementations. The `battery` property is required but defaults to `null` — all existing implementations (`GanBluetoothConnection`, `WebBluetoothCubeConnection`) must add `readonly battery: number | null = null`.
 
 ### New file: `src/features/bluetooth/smart-cube-connection.ts`
 
@@ -61,15 +76,32 @@ A `CubeConnection` wrapper that handles multi-brand device selection:
 
 1. `connect()` calls `navigator.bluetooth.requestDevice()` with combined filters:
    - `{ namePrefix: "GAN" }` — GAN cubes
-   - `{ namePrefix: "MiSmartHub" }` — GAN cubes (alternative name)
+   - `{ namePrefix: "MG" }` — GAN cubes (Monster Go)
+   - `{ namePrefix: "AiCube" }` — GAN/MoYu AI 2023
    - `{ namePrefix: "WCU_MY3" }` — MoYu V10/V11
-2. Based on the selected device name, instantiates and delegates to either `GanBluetoothConnection` or `MoYuBluetoothConnection`
+   - `optionalServices`: all GAN service UUIDs + MoYu service UUID
+   - `optionalManufacturerData`: combined GAN + MoYu CIC lists
+2. Based on the selected device name, delegates to the appropriate connection class
 3. Forwards all `CubeConnection` methods to the active delegate
 4. On disconnect, clears the delegate so a different cube type can be selected next time
 
 ### Modified file: `src/features/bluetooth/gan-bluetooth-connection.ts`
 
-Refactor to accept an already-selected `BluetoothDevice` from the wrapper, rather than calling `connectGanCube()` internally. This allows the `SmartCubeConnection` to control device selection while GAN handles its own protocol. Also add battery support (the GAN protocol already provides battery data via `gan-web-bluetooth`).
+Refactor to accept a pre-selected `BluetoothDevice` instead of calling `connectGanCube()`. This is feasible because `gan-web-bluetooth` exports all needed building blocks:
+
+- `GanCubeClassicConnection.create(device, commandChrct, stateChrct, encrypter, driver)` — creates connection from pre-selected device
+- `GanGen2ProtocolDriver`, `GanGen3ProtocolDriver`, `GanGen4ProtocolDriver` — protocol handlers
+- `GanGen2CubeEncrypter`, `GanGen3CubeEncrypter`, `GanGen4CubeEncrypter` — decryption
+- All service/characteristic UUID constants
+- `GAN_ENCRYPTION_KEYS`, `GAN_CIC_LIST`
+
+The device is passed via constructor (`new GanBluetoothConnection(device)`), not via `connect()`, so the `CubeConnection` interface contract (`connect(): Promise<void>`) is preserved. The `connect()` method then:
+1. Resolves MAC address via `watchAdvertisements()` (reimplemented, ~20 lines — the library's `autoRetrieveMacAddress` is not exported) with fallback to user prompt
+2. Connects GATT, discovers services, matches service UUID to protocol generation
+3. Creates encrypter + driver + `GanCubeClassicConnection.create()`
+4. Subscribes to events and emits `CubeMoveEvent`s as before
+
+Also adds battery support by handling `BATTERY` events from `gan-web-bluetooth` (already emitted, just not consumed currently).
 
 ### Modified file: `src/app/routes.tsx`
 
@@ -89,17 +121,23 @@ Show battery percentage in the debug page connection info area. Simple text disp
 - No changes to `WebBluetoothCubeConnection` (cubing.js-based, kept for future use)
 - Gyro/orientation data from the MoYu protocol is ignored
 
+## ADR update
+
+ADR-001 will be amended to reflect that MoYu V10/V11 support is implemented as a custom driver ported from cstimer, rather than via cubing.js's `connectSmartPuzzle()` (which does not support these models). The two-library strategy remains: `gan-web-bluetooth` low-level APIs for GAN cubes, custom driver for MoYu, with both wrapped behind `SmartCubeConnection`.
+
 ## Dependencies
 
 - No new npm dependencies. AES via Web Crypto API, key constants pre-decompressed.
 
 ## Testing approach
 
-- Unit tests for message parsing (decryption, facelet parsing, move decoding) using known test vectors from the cstimer implementation
-- Unit tests for facelet-to-KPattern conversion
+- Unit tests for AES decryption/encryption using known test vectors
+- Unit tests for message parsing (facelet state, move events, battery)
+- Unit tests for facelet-to-KPattern conversion against known cube states (solved, T-perm, superflip)
+- Unit tests for facelet validation (reject impossible states)
+- Unit tests for move counter gap handling (1-move gap, 5-move gap, >5-move gap triggering resync)
 - Integration testing requires a physical MoYu WRM V11 AI cube (manual)
 
-## Open questions
+## Known limitations
 
-- **Chrome CIC bug:** Chrome crashes when receiving BLE advertisements with Company Identifier Code 0x0000 (affects unbound cubes or cubes with low account IDs). The cstimer workaround is to only scan CICs 0x0100–0xFF00. We'll use the same approach — if the cube is unbound, MAC discovery fails and the user gets a manual MAC prompt as fallback. This matches the GAN cube experience.
-- **GAN connection refactor scope:** The `gan-web-bluetooth` library's `connectGanCube()` handles its own `requestDevice` call. To let `SmartCubeConnection` control device selection, we either (a) refactor `GanBluetoothConnection` to accept a pre-selected device and use lower-level `gan-web-bluetooth` APIs, or (b) keep `GanBluetoothConnection` as-is and have `SmartCubeConnection` detect the cube type *before* connecting (e.g., do a `requestDevice` scan, check the name, disconnect, then delegate to the appropriate connection which re-prompts). Option (a) is cleaner but depends on what `gan-web-bluetooth` exposes. Option (b) is simpler but causes a double-prompt. Will resolve during implementation by checking the `gan-web-bluetooth` API surface.
+- **Chrome CIC bug:** Chrome crashes on BLE advertisements with CIC 0x0000 (affects unbound cubes or cubes with low account IDs < 65536). We use the same cstimer workaround: only scan CICs 0x0100–0xFF00. Unbound cubes require manual MAC entry.
