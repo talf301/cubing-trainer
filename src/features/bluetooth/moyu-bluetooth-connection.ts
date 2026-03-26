@@ -823,8 +823,14 @@ export class MoYuBluetoothConnection implements CubeConnection {
 
     const raw = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
     const decrypted = await this.cipher.decrypt(raw);
+    console.log("[MoYu] raw opcode byte:", decrypted[0], "hex:", decrypted[0].toString(16));
     const msg = parseMessage(decrypted);
-    if (!msg) return;
+    if (!msg) {
+      console.log("[MoYu] unknown message opcode:", decrypted[0]);
+      return;
+    }
+
+    console.log("[MoYu] message:", msg.type, msg);
 
     switch (msg.type) {
       case "facelets":
@@ -844,6 +850,7 @@ export class MoYuBluetoothConnection implements CubeConnection {
 
   /** Process initial facelet state from the cube. */
   private handleFacelets(facelets: string, moveCount: number): void {
+    console.log("[MoYu] handleFacelets: prevMoveCnt=", this.prevMoveCnt, "moveCount=", moveCount, "facelets=", facelets);
     if (this.prevMoveCnt !== -1) return; // Only use initial state
 
     this.moveCnt = moveCount;
@@ -852,8 +859,10 @@ export class MoYuBluetoothConnection implements CubeConnection {
     try {
       if (this.kpuzzle) {
         this.currentState = faceletToKPattern(facelets, this.kpuzzle);
+        console.log("[MoYu] initial state set from facelets");
       }
-    } catch {
+    } catch (e) {
+      console.warn("[MoYu] facelet parsing failed, falling back to solved:", e);
       // If facelet parsing fails, fall back to solved state
       if (this.kpuzzle) {
         this.currentState = this.kpuzzle.defaultPattern();
@@ -872,6 +881,7 @@ export class MoYuBluetoothConnection implements CubeConnection {
   /** Process move events from the cube. */
   private handleMoves(moveCount: number, moves: MoYuBufferedMove[]): void {
     this.moveCnt = moveCount;
+    console.log("[MoYu] handleMoves: moveCnt=", moveCount, "prevMoveCnt=", this.prevMoveCnt, "moves=", moves);
     if (this.moveCnt === this.prevMoveCnt || this.prevMoveCnt === -1) return;
 
     const locTime = Date.now();
