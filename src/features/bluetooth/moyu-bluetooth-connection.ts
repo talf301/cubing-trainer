@@ -789,13 +789,19 @@ export class MoYuBluetoothConnection implements CubeConnection {
 
       // watchAdvertisements() may not be supported in all browsers
       if ("watchAdvertisements" in this.device) {
-        (this.device as { watchAdvertisements: () => Promise<void> })
+        console.log("[MoYu] calling watchAdvertisements...");
+        (this.device as { watchAdvertisements: (opts?: { signal?: AbortSignal }) => Promise<void> })
           .watchAdvertisements()
-          .catch(() => {
+          .then(() => {
+            console.log("[MoYu] watchAdvertisements started, waiting for advertisement...");
+          })
+          .catch((err) => {
+            console.log("[MoYu] watchAdvertisements failed:", err);
             cleanup();
-            reject(new Error("watchAdvertisements not supported"));
+            reject(new Error("watchAdvertisements failed"));
           });
       } else {
+        console.log("[MoYu] watchAdvertisements not available");
         cleanup();
         reject(new Error("watchAdvertisements not available"));
       }
