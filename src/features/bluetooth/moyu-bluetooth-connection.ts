@@ -627,7 +627,7 @@ export class MoYuBluetoothConnection implements CubeConnection {
 
       // Step 1: Resolve MAC address
       const mac = await this.resolveMacAddress();
-      console.log("[MoYu] resolved MAC:", mac);
+
       this.cipher = await createMoYuCipher(mac);
 
       // Step 2: Connect GATT
@@ -655,7 +655,6 @@ export class MoYuBluetoothConnection implements CubeConnection {
         this.onCharValueChanged,
       );
       await this.readChar.startNotifications();
-      console.log("[MoYu] notifications started, sending initial requests...");
 
       // Step 5: Listen for disconnection
       this.device.addEventListener(
@@ -789,19 +788,13 @@ export class MoYuBluetoothConnection implements CubeConnection {
 
       // watchAdvertisements() may not be supported in all browsers
       if ("watchAdvertisements" in this.device) {
-        console.log("[MoYu] calling watchAdvertisements...");
-        (this.device as { watchAdvertisements: (opts?: { signal?: AbortSignal }) => Promise<void> })
+        (this.device as { watchAdvertisements: () => Promise<void> })
           .watchAdvertisements()
-          .then(() => {
-            console.log("[MoYu] watchAdvertisements started, waiting for advertisement...");
-          })
-          .catch((err) => {
-            console.log("[MoYu] watchAdvertisements failed:", err);
+          .catch(() => {
             cleanup();
             reject(new Error("watchAdvertisements failed"));
           });
       } else {
-        console.log("[MoYu] watchAdvertisements not available");
         cleanup();
         reject(new Error("watchAdvertisements not available"));
       }
@@ -815,7 +808,6 @@ export class MoYuBluetoothConnection implements CubeConnection {
     const req = new Uint8Array(20);
     req[0] = opcode;
     const encrypted = await this.cipher.encrypt(req);
-    console.log("[MoYu] sendRequest opcode:", "0x" + opcode.toString(16), "encrypted:", [...encrypted].slice(0, 6), "...");
     await this.writeChar.writeValueWithoutResponse(encrypted);
   }
 
@@ -825,14 +817,8 @@ export class MoYuBluetoothConnection implements CubeConnection {
 
     const raw = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
     const decrypted = await this.cipher.decrypt(raw);
-    console.log("[MoYu] raw opcode byte:", decrypted[0], "hex:", decrypted[0].toString(16));
     const msg = parseMessage(decrypted);
-    if (!msg) {
-      console.log("[MoYu] unknown message opcode:", decrypted[0]);
-      return;
-    }
-
-    console.log("[MoYu] message:", msg.type, msg);
+    if (!msg) return;
 
     switch (msg.type) {
       case "facelets":
@@ -852,7 +838,6 @@ export class MoYuBluetoothConnection implements CubeConnection {
 
   /** Process initial facelet state from the cube. */
   private handleFacelets(facelets: string, moveCount: number): void {
-    console.log("[MoYu] handleFacelets: prevMoveCnt=", this.prevMoveCnt, "moveCount=", moveCount, "facelets=", facelets);
     if (this.prevMoveCnt !== -1) return; // Only use initial state
 
     this.moveCnt = moveCount;
@@ -861,10 +846,8 @@ export class MoYuBluetoothConnection implements CubeConnection {
     try {
       if (this.kpuzzle) {
         this.currentState = faceletToKPattern(facelets, this.kpuzzle);
-        console.log("[MoYu] initial state set from facelets");
       }
-    } catch (e) {
-      console.warn("[MoYu] facelet parsing failed, falling back to solved:", e);
+    } catch {
       // If facelet parsing fails, fall back to solved state
       if (this.kpuzzle) {
         this.currentState = this.kpuzzle.defaultPattern();
@@ -883,7 +866,6 @@ export class MoYuBluetoothConnection implements CubeConnection {
   /** Process move events from the cube. */
   private handleMoves(moveCount: number, moves: MoYuBufferedMove[]): void {
     this.moveCnt = moveCount;
-    console.log("[MoYu] handleMoves: moveCnt=", moveCount, "prevMoveCnt=", this.prevMoveCnt, "moves=", moves);
     if (this.moveCnt === this.prevMoveCnt || this.prevMoveCnt === -1) return;
 
     const locTime = Date.now();
