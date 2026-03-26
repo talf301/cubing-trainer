@@ -627,6 +627,7 @@ export class MoYuBluetoothConnection implements CubeConnection {
 
       // Step 1: Resolve MAC address
       const mac = await this.resolveMacAddress();
+      console.log("[MoYu] resolved MAC:", mac);
       this.cipher = await createMoYuCipher(mac);
 
       // Step 2: Connect GATT
@@ -654,6 +655,7 @@ export class MoYuBluetoothConnection implements CubeConnection {
         this.onCharValueChanged,
       );
       await this.readChar.startNotifications();
+      console.log("[MoYu] notifications started, sending initial requests...");
 
       // Step 5: Listen for disconnection
       this.device.addEventListener(
@@ -814,7 +816,8 @@ export class MoYuBluetoothConnection implements CubeConnection {
     const req = new Uint8Array(20);
     req[0] = opcode;
     const encrypted = await this.cipher.encrypt(req);
-    await this.writeChar.writeValue(encrypted);
+    console.log("[MoYu] sendRequest opcode:", "0x" + opcode.toString(16), "encrypted:", [...encrypted].slice(0, 6), "...");
+    await this.writeChar.writeValueWithoutResponse(encrypted);
   }
 
   /** Handle an incoming notification from the read characteristic. */
