@@ -724,14 +724,7 @@ export class MoYuBluetoothConnection implements CubeConnection {
     const advMac = await this.tryAdvertisementMac().catch(() => null);
     if (advMac) return advMac;
 
-    // Try device name pattern: WCU_MY32_XXXX → CF:30:16:00:XX:XX
-    const name = this.device.name?.trim() ?? "";
-    const nameMatch = /^WCU_MY32_([0-9A-F]{2})([0-9A-F]{2})$/.exec(name);
-    if (nameMatch) {
-      return `CF:30:16:00:${nameMatch[1]}:${nameMatch[2]}`;
-    }
-
-    // Last resort: prompt user
+    // Last resort: prompt user (name-based derivation is unreliable — prefix byte varies)
     const mac = prompt(
       "Could not automatically detect cube MAC address.\n" +
         "Enter MAC address (from chrome://bluetooth-internals):\n" +

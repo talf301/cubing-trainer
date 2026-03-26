@@ -42,6 +42,16 @@ const OPTIONAL_SERVICES: BluetoothServiceUUID[] = [
   MOYU_SERVICE_UUID,
 ];
 
+/**
+ * MoYu CIC list for optionalManufacturerData.
+ * CICs 0x0100–0xFF00: derived from bound account IDs.
+ * CIC 0x0000 is excluded — it crashes Chrome (WTF::HashMap disallows 0 as key).
+ */
+const MOYU_CIC_LIST: number[] = Array.from({ length: 255 }, (_, i) => (i + 1) << 8);
+
+/** GAN CIC list — all values [0x0001..0xFF01]. */
+const GAN_CIC_LIST: number[] = Array.from({ length: 256 }, (_, i) => (i << 8) | 0x01);
+
 // ─── Helper ─────────────────────────────────────────────────────────────────
 
 function isMoYuDevice(name: string): boolean {
@@ -76,6 +86,7 @@ export class SmartCubeConnection implements CubeConnection {
     const device = await navigator.bluetooth.requestDevice({
       filters: DEVICE_FILTERS,
       optionalServices: OPTIONAL_SERVICES,
+      optionalManufacturerData: [...MOYU_CIC_LIST, ...GAN_CIC_LIST],
     });
 
     const name = device.name ?? "";
