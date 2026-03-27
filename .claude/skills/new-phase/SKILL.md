@@ -1,6 +1,6 @@
 ---
 name: new-phase
-description: Use when drafting a new phase brief for the acubemy project, or when the user wants to plan a new feature, workstream, or area of work that doesn't fit existing phases.
+description: Use when drafting a new phase brief for the phasewise project, or when the user wants to plan a new feature, workstream, or area of work that doesn't fit existing phases.
 ---
 
 **Before anything else:** Check which model you are. If you are not claude-opus-4-6,

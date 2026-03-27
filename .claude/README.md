@@ -1,6 +1,6 @@
-# acubemy Claude Skills
+# phasewise Claude Skills
 
-Project-level skills for the acubemy codebase. These work alongside
+Project-level skills for the phasewise codebase. These work alongside
 [Superpowers](https://github.com/obra/superpowers) to enforce a consistent
 planning and execution workflow across sessions.
 

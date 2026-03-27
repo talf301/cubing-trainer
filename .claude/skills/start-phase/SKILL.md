@@ -1,6 +1,6 @@
 ---
 name: start-phase
-description: Use when starting work on a phase of the acubemy project, loading a phase brief, or when the user says "start phase", "begin phase", or names a phase to work on.
+description: Use when starting work on a phase of the phasewise project, loading a phase brief, or when the user says "start phase", "begin phase", or names a phase to work on.
 ---
 
 **Before anything else:** Check which model you are. If you are not claude-opus-4-6,

@@ -1,7 +1,7 @@
 # Phase 0: Project Scaffolding — Design Spec
 
 ## Overview
-Set up the acubemy project foundation: React + TypeScript app with Vite, testing, styling, routing, linting, and directory structure. No feature code — just a working shell that all future phases build on.
+Set up the phasewise project foundation: React + TypeScript app with Vite, testing, styling, routing, linting, and directory structure. No feature code — just a working shell that all future phases build on.
 
 ## Tech Stack
 - **React 19** + **TypeScript** (strict mode)

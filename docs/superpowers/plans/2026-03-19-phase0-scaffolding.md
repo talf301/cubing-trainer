@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Set up the acubemy project as a working React + TypeScript app with Vite, Vitest, Tailwind, React Router, ESLint, and Prettier — ready for feature development.
+**Goal:** Set up the phasewise project as a working React + TypeScript app with Vite, Vitest, Tailwind, React Router, ESLint, and Prettier — ready for feature development.
 
 **Architecture:** Single-page React app with client-side routing via React Router. A shared Layout component wraps all routes with a nav bar. Source organized into `app/` (shell), `components/` (shared UI), `features/` (feature modules), `core/` (framework-agnostic logic), and `lib/` (wrappers). The `core/` directory must never import from React or any UI framework.
 

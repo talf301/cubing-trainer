@@ -1,4 +1,4 @@
-# acubemy — Product Requirements Document
+# Phasewise — Product Requirements Document
 
 ## What this is
 A personal speedcubing training tool. A smart cube connects via Bluetooth, solves are recorded and automatically segmented into CFOP phases (Cross, F2L, OLL, PLL). The tool recognizes specific OLL/PLL cases and F2L pair cases, and uses structured training to surface weak cases for targeted drilling.

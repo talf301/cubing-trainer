@@ -526,7 +526,7 @@ Expected: FAIL — module not found
 // src/lib/db.ts
 import { openDB, type IDBPDatabase } from "idb";
 
-export interface AcubemyDB {
+export interface PhasewiseDB {
   solves: {
     key: string;
     value: {
@@ -542,11 +542,11 @@ export interface AcubemyDB {
   };
 }
 
-let dbPromise: Promise<IDBPDatabase<AcubemyDB>> | null = null;
+let dbPromise: Promise<IDBPDatabase<PhasewiseDB>> | null = null;
 
-export function getDB(): Promise<IDBPDatabase<AcubemyDB>> {
+export function getDB(): Promise<IDBPDatabase<PhasewiseDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<AcubemyDB>("acubemy", 1, {
+    dbPromise = openDB<PhasewiseDB>("phasewise", 1, {
       upgrade(db) {
         const solveStore = db.createObjectStore("solves", { keyPath: "id" });
         solveStore.createIndex("by-created", "createdAt");

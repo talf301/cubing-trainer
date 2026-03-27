@@ -1,6 +1,6 @@
 ---
 name: new-decision
-description: Use when recording an architectural or technical decision for acubemy. Triggers when the user says "record a decision", "write an ADR", or when a significant technical choice needs to be documented.
+description: Use when recording an architectural or technical decision for phasewise. Triggers when the user says "record a decision", "write an ADR", or when a significant technical choice needs to be documented.
 ---
 
 **Before anything else:** Check which model you are. If you are not claude-opus-4-6,
