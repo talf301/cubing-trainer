@@ -25,11 +25,17 @@ function workerSafeChunks(): Plugin {
       for (const chunk of Object.values(bundle)) {
         if (chunk.type !== "chunk") continue;
 
-        // Patch the preload helper: guard the DOM branch
+        // Patch the preload helper: guard DOM access for worker safety
         if (chunk.code.includes("modulepreload")) {
+          // Guard the preload branch that uses document
           chunk.code = chunk.code.replace(
             /if\(([a-zA-Z])&&\1\.length>0\)\{document\./g,
             'if($1&&$1.length>0&&typeof document!=="undefined"){document.',
+          );
+          // Guard the error handler that uses window.dispatchEvent
+          chunk.code = chunk.code.replace(
+            /window\.dispatchEvent\(/g,
+            '(typeof window!=="undefined"&&window.dispatchEvent)(',
           );
         }
 
