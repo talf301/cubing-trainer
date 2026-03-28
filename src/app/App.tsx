@@ -4,7 +4,7 @@ import { Timer, History, Training, TrainingCross, PllTrainerRoute, Settings, Deb
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/cubing-trainer">
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Timer />} />
