@@ -41,20 +41,23 @@ function workerSafeChunks(): Plugin {
 
         // Patch the search worker entry: replace main bundle import with
         // an inline expose flag so the worker doesn't load the entire app.
-        // The worker entry has: import{e as o}from"./index-XXXX.js";o.expose&&(...)
-        // We replace the import with a local constant.
         if (
           chunk.fileName.includes("search-worker-entry") &&
           chunk.code.includes("comlink-exposed")
         ) {
-          // Replace: import{e as VAR}from"./index-HASH.js";VAR.expose&&(
-          // With:    const VAR={expose:true};VAR.expose&&(
           chunk.code = chunk.code.replace(
             /import\{(\w) as (\w)\}from"\.\/index-[^"]+\.js";/,
             "const $2={expose:true};",
           );
-          // Remove bare side-effect imports of vendor chunks (e.g. react-vendor)
-          // that were left behind. Workers don't need React.
+        }
+
+        // Remove bare side-effect imports of react-vendor from any chunk
+        // loaded in the worker. React references document at top level
+        // and crashes in worker contexts.
+        if (
+          chunk.fileName.includes("search-worker-entry") ||
+          chunk.fileName.includes("inside-")
+        ) {
           chunk.code = chunk.code.replace(
             /import"\.\/react-vendor-[^"]+\.js";/g,
             "",
