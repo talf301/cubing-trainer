@@ -31,8 +31,17 @@ export function useSolveSession(connection: CubeConnection) {
     });
   }, []);
 
+  const [scrambleError, setScrambleError] = useState<string | null>(null);
+
   const startNewSolve = useCallback(async () => {
-    const result = await generateScramble();
+    let result;
+    try {
+      result = await generateScramble();
+    } catch (e) {
+      setScrambleError(e instanceof Error ? e.message : String(e));
+      return;
+    }
+    setScrambleError(null);
     setScramble(result.scramble);
 
     // Create a new ScrambleTracker for this scramble.
@@ -158,5 +167,6 @@ export function useSolveSession(connection: CubeConnection) {
     displayMs,
     trackerState,
     recentSolves,
+    scrambleError,
   };
 }

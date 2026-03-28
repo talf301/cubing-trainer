@@ -22,7 +22,7 @@ const PHASE_LABELS: Record<string, string> = {
 
 export function SolvePage({ connection }: SolvePageProps) {
   const { status, error, connect } = useCubeConnection(connection);
-  const { phase, displayMs, trackerState, recentSolves } =
+  const { phase, displayMs, trackerState, recentSolves, scrambleError } =
     useSolveSession(connection);
 
   const isConnected = status === "connected";
@@ -65,6 +65,9 @@ export function SolvePage({ connection }: SolvePageProps) {
       {/* Debug info */}
       {isConnected && debugInfo && (
         <p className="text-center text-xs text-gray-500 font-mono">{debugInfo}</p>
+      )}
+      {scrambleError && (
+        <p className="text-center text-sm text-red-400">Scramble error: {scrambleError}</p>
       )}
 
       {/* Scramble display with progress */}
