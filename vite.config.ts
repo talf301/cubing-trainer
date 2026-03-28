@@ -35,13 +35,14 @@ function workerSafeChunks(): Plugin {
         if (chunk.fileName.includes("preload-helper")) {
           const domShim = `if(typeof document==="undefined"){` +
             `const _noop=()=>new Proxy({},{get:()=>_noop,set:()=>true});` +
-            `globalThis.document=_noop();` +
-            `globalThis.HTMLElement=class{};` +
-            `globalThis.customElements={define:_noop,get:_noop};` +
-            `globalThis.CSSStyleSheet=class{replaceSync(){}};` +
-            `globalThis.window=globalThis;` +
-            `globalThis.localStorage={getItem:()=>null,setItem:_noop,removeItem:_noop};` +
-            `globalThis.navigator=_noop();}`;
+            `const _def=(n,v)=>{try{Object.defineProperty(globalThis,n,{value:v,writable:true,configurable:true})}catch{}};` +
+            `_def("document",_noop());` +
+            `_def("HTMLElement",class{});` +
+            `_def("customElements",{define:_noop,get:_noop});` +
+            `_def("CSSStyleSheet",class{replaceSync(){}});` +
+            `_def("window",globalThis);` +
+            `_def("localStorage",{getItem:()=>null,setItem:_noop,removeItem:_noop});` +
+            `_def("navigator",_noop());}`;
           chunk.code = domShim + chunk.code;
         }
 
