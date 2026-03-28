@@ -45,22 +45,48 @@ function isOppositeFace(a: string, b: string): boolean {
   return pairs[a] === b;
 }
 
+/**
+ * Check if the browser supports module workers, which cubing.js requires
+ * for its scramble search worker. iOS WebKit often doesn't support these,
+ * causing the scramble promise to hang forever.
+ */
+let _moduleWorkerSupport: boolean | null = null;
+function supportsModuleWorkers(): boolean {
+  if (_moduleWorkerSupport !== null) return _moduleWorkerSupport;
+  try {
+    const blob = new Blob([""], { type: "text/javascript" });
+    const url = URL.createObjectURL(blob);
+    const w = new Worker(url, { type: "module" });
+    w.terminate();
+    URL.revokeObjectURL(url);
+    _moduleWorkerSupport = true;
+  } catch {
+    _moduleWorkerSupport = false;
+  }
+  return _moduleWorkerSupport;
+}
+
 /** Race scramble generation against a timeout, falling back to random-move scramble. */
 export async function generateScramble(): Promise<ScrambleResult> {
   const kpuzzle = await cube3x3x3.kpuzzle();
 
   let scrambleStr: string;
-  try {
-    const scrambleAlg = await Promise.race([
-      randomScrambleForEvent("333"),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("scramble timeout")), 5000),
-      ),
-    ]);
-    scrambleStr = scrambleAlg.toString();
-  } catch {
-    // Worker-based scramble failed or timed out — use random-move fallback
+  if (!supportsModuleWorkers()) {
+    // Skip worker-based scramble entirely on unsupported browsers
     scrambleStr = randomMoveScramble();
+  } else {
+    try {
+      const scrambleAlg = await Promise.race([
+        randomScrambleForEvent("333"),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("scramble timeout")), 5000),
+        ),
+      ]);
+      scrambleStr = scrambleAlg.toString();
+    } catch {
+      // Worker-based scramble failed or timed out — use random-move fallback
+      scrambleStr = randomMoveScramble();
+    }
   }
 
   const alg = new Alg(scrambleStr);
