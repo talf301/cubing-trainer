@@ -66,25 +66,35 @@ function supportsModuleWorkers(): boolean {
   return _moduleWorkerSupport;
 }
 
+/** Tracks whether the cubing.js worker has ever produced a scramble. */
+let workerKnownGood = false;
+let workerKnownBad = false;
+
 /** Race scramble generation against a timeout, falling back to random-move scramble. */
 export async function generateScramble(): Promise<ScrambleResult> {
   const kpuzzle = await cube3x3x3.kpuzzle();
 
   let scrambleStr: string;
-  if (!supportsModuleWorkers()) {
-    // Skip worker-based scramble entirely on unsupported browsers
+  if (workerKnownBad || !supportsModuleWorkers()) {
     scrambleStr = randomMoveScramble();
   } else {
     try {
       const scrambleAlg = await Promise.race([
         randomScrambleForEvent("333"),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("scramble timeout")), 5000),
+          setTimeout(() => reject(new Error("scramble timeout")),
+            // Give extra time on first attempt for table initialization
+            workerKnownGood ? 3000 : 8000,
+          ),
         ),
       ]);
       scrambleStr = scrambleAlg.toString();
+      workerKnownGood = true;
     } catch {
-      // Worker-based scramble failed or timed out — use random-move fallback
+      if (!workerKnownGood) {
+        // Worker never succeeded — stop trying
+        workerKnownBad = true;
+      }
       scrambleStr = randomMoveScramble();
     }
   }
