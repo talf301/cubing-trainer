@@ -37,7 +37,7 @@ export function SolvePage({ connection }: SolvePageProps) {
       if (delegate && "notificationCount" in delegate) {
         const d = delegate as MoYuBluetoothConnection;
         setDebugInfo(
-          `notifications: ${d.notificationCount}, parsed: ${d.parsedCount}, lastOpcode: 0x${d.lastOpcode.toString(16)}`
+          `notif: ${d.notificationCount}, parsed: ${d.parsedCount}, opcode: 0x${d.lastOpcode.toString(16)}, writeProps: ${d.writeProps}${d.writeError ? `, writeErr: ${d.writeError}` : ""}`
         );
       }
     }, 500);

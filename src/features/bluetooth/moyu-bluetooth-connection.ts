@@ -588,6 +588,10 @@ export class MoYuBluetoothConnection implements CubeConnection {
   parsedCount = 0;
   /** Last raw opcode byte seen after decryption (0 = none yet). */
   lastOpcode = 0;
+  /** Write characteristic properties for debugging. */
+  writeProps = "";
+  /** Whether writes threw an error. */
+  writeError = "";
 
   // Event listeners
   private moveListeners = new Set<(event: CubeMoveEvent) => void>();
@@ -666,6 +670,8 @@ export class MoYuBluetoothConnection implements CubeConnection {
         this.onCharValueChanged,
       );
       await this.readChar.startNotifications();
+      // Small delay to let the BLE stack settle before sending requests
+      await new Promise((r) => setTimeout(r, 200));
 
       // Step 5: Listen for disconnection
       this.device.addEventListener(
@@ -673,10 +679,23 @@ export class MoYuBluetoothConnection implements CubeConnection {
         this.onDisconnected,
       );
 
+      // Log write characteristic properties for debugging
+      const p = this.writeChar.properties;
+      this.writeProps = [
+        p.write && "write",
+        p.writeWithoutResponse && "writeWithoutResponse",
+        p.notify && "notify",
+        p.read && "read",
+      ].filter(Boolean).join(",") || "none";
+
       // Step 6: Request initial state
-      await this.sendRequest(0xa1); // info
-      await this.sendRequest(0xa3); // facelets
-      await this.sendRequest(0xa4); // battery
+      try {
+        await this.sendRequest(0xa1); // info
+        await this.sendRequest(0xa3); // facelets
+        await this.sendRequest(0xa4); // battery
+      } catch (e) {
+        this.writeError = e instanceof Error ? e.message : String(e);
+      }
 
       this.setStatus("connected");
     } catch (error) {
@@ -819,7 +838,13 @@ export class MoYuBluetoothConnection implements CubeConnection {
     const req = new Uint8Array(20);
     req[0] = opcode;
     const encrypted = await this.cipher.encrypt(req);
-    await this.writeChar.writeValueWithoutResponse(encrypted);
+    // Use writeValueWithoutResponse if available, fall back to writeValue
+    // (some iOS BLE browsers don't support writeValueWithoutResponse)
+    if (this.writeChar.properties.writeWithoutResponse) {
+      await this.writeChar.writeValueWithoutResponse(encrypted);
+    } else {
+      await this.writeChar.writeValue(encrypted);
+    }
   }
 
   /** Handle an incoming notification from the read characteristic. */
