@@ -18,7 +18,7 @@ const PHASE_LABELS: Record<string, string> = {
 };
 
 export function SolvePage({ connection }: SolvePageProps) {
-  const { status, connect } = useCubeConnection(connection);
+  const { status, error, connect } = useCubeConnection(connection);
   const { phase, displayMs, trackerState, recentSolves } =
     useSolveSession(connection);
 
@@ -36,6 +36,9 @@ export function SolvePage({ connection }: SolvePageProps) {
           >
             {status === "connecting" ? "Connecting..." : "Connect Cube"}
           </button>
+          {error && (
+            <p className="mt-2 text-sm text-red-400">{error}</p>
+          )}
         </div>
       )}
 
