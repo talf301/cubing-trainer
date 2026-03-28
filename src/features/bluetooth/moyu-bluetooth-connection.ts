@@ -641,9 +641,9 @@ export class MoYuBluetoothConnection implements CubeConnection {
       const chrcts = await service.getCharacteristics();
 
       this.readChar =
-        chrcts.find((c) => c.uuid === CHRT_UUID_READ) ?? null;
+        chrcts.find((c) => c.uuid.toLowerCase() === CHRT_UUID_READ) ?? null;
       this.writeChar =
-        chrcts.find((c) => c.uuid === CHRT_UUID_WRITE) ?? null;
+        chrcts.find((c) => c.uuid.toLowerCase() === CHRT_UUID_WRITE) ?? null;
 
       if (!this.readChar || !this.writeChar) {
         const found = chrcts.map((c) => c.uuid).join(", ");
