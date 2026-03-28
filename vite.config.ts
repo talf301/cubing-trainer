@@ -33,9 +33,14 @@ function workerSafeChunks(): Plugin {
         // The shim is guarded by typeof document === "undefined" so it's
         // a no-op on the main thread.
         if (chunk.fileName.includes("preload-helper")) {
+          // Only shim globals that don't exist in workers. Workers already
+          // have `window` (alias for `self`), `navigator`, and `localStorage`
+          // on some engines — redefining them on iOS WKWebView throws
+          // "Attempted to assign to readonly property" from within
+          // Object.defineProperty in a way that bypasses try/catch.
           const domShim = `if(typeof document==="undefined"){` +
             `const _noop=()=>new Proxy({},{get:()=>_noop,set:()=>true});` +
-            `const _def=(n,v)=>{try{Object.defineProperty(globalThis,n,{value:v,writable:true,configurable:true})}catch{}};` +
+            `const _def=(n,v)=>{if(!(n in globalThis)){try{Object.defineProperty(globalThis,n,{value:v,writable:true,configurable:true})}catch{}}};` +
             `_def("document",_noop());` +
             `_def("HTMLElement",class{});` +
             `_def("customElements",{define:_noop,get:_noop});` +
