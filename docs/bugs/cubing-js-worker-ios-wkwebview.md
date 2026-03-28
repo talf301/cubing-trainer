@@ -1,7 +1,7 @@
 # cubing.js search worker fails on iOS WKWebView (Bluefy)
 
 **Date:** 2026-03-28
-**Status:** Workaround in place, not fully resolved
+**Status:** Resolved (2026-03-28)
 **Affects:** `cubing/scramble` (`randomScrambleForEvent`), and any future use of `cubing/search` (solver)
 
 ## Summary
@@ -62,32 +62,24 @@ These all execute during module evaluation and crash in workers on iOS WKWebView
 - Patching worker entry to remove main bundle import — insufficient, `inside` chunk still imports DOM-laden index
 - Stripping bare `import"./react-vendor-*.js"` from worker chunks — only removed side-effect imports, not named imports
 - Guarding `document` references in preload helper — fixed that file but not the index chunk
-- **Current approach:** Injecting a Proxy-based DOM shim into the preload-helper chunk (the first module the worker loads). The shim provides no-op stubs for `document`, `HTMLElement`, `customElements`, `CSSStyleSheet`, `window`, `localStorage`, and `navigator`. Uses `Object.defineProperty` with try/catch to handle non-configurable globals in strict mode. **Status: in testing, not yet confirmed working.**
+- DOM shim injection into preload-helper — failed on iOS WKWebView with "Attempted to assign to readonly property" when trying to redefine `window` on globalThis
+- Adding `!(n in globalThis)` guard to shim — fixed the readonly error but React still crashed (error #299) because the `inside` chunk imported the index chunk
+- **Solution: `manualChunks` chunk separation.** Put all cubing.js non-twisty modules into a `cubing-core` chunk via Rollup's `manualChunks`. The search worker's dependency chain becomes `search-worker-entry → cubing-core → inside`, never loading the index chunk (which contains React + twisty player DOM code). cubing.js's own code already guards DOM access with `globalThis.HTMLElement ? ... : fallback` patterns, so no DOM shim is needed. A small Vite plugin still guards Vite's modulepreload helper with `typeof document` checks. **Confirmed working on Bluefy/iOS WKWebView.**
 
-## Current workaround
+## Fallback (still in place)
 
-`src/lib/scramble.ts` has a fallback system:
+`src/lib/scramble.ts` retains the fallback system as defense-in-depth:
 1. Detect module worker support (`supportsModuleWorkers()`)
 2. Race `randomScrambleForEvent()` against an 8s timeout (first attempt) or 3s (subsequent)
 3. If the worker never succeeds, mark it as broken in `localStorage` and use random-move scrambles instantly for all future calls
 4. Random-move scrambles are not random-state (not uniformly distributed over all cube states) but are fine for practice
 
-## Impact
+## Impact (post-fix)
 
-- **Scrambles:** Random-move fallback works. Users get usable scrambles instantly after the first session.
-- **Solver (future):** No workaround exists. Features like optimal cross solution display, solve reconstruction review, and case identification that need the solver will not work on Bluefy until this is resolved.
-- **Desktop Chrome:** Unaffected. The worker works fine.
-- **Capacitor (future):** Likely unaffected. Capacitor uses the system WKWebView which is updated with iOS. iOS 15+ supports module workers. The key difference is that Capacitor's WKWebView is more modern than Bluefy's, and Capacitor apps typically serve content from `capacitor://localhost` which may have different security policies.
+- **Scrambles:** Random-state scrambles now work on Bluefy via the cubing.js worker.
+- **Solver (future):** Should also work, since the solver uses the same worker/chunk path. Needs testing when solver features are implemented.
+- **Desktop Chrome:** Unaffected. The worker continues to work fine.
 
-## What would fix this properly
+## Key insight
 
-1. **cubing.js:** Separate solver/puzzle code from twisty player UI code at the package level so they end up in different chunks. The search worker should never need to import modules that reference DOM globals. This is a bundling/architecture issue in cubing.js.
-2. **Vite:** Better worker chunk isolation — worker bundles should not share chunks with the main thread bundle, or at minimum should tree-shake DOM references from worker-loaded chunks.
-3. **Our DOM shim approach:** If confirmed working, this is a viable long-term workaround that doesn't require upstream changes. The shim makes all DOM APIs no-op in the worker context, allowing module evaluation to succeed. The solver code paths never actually call DOM APIs, so the stubs are never exercised beyond initialization.
-
-## Reproduction
-
-1. Deploy to GitHub Pages with `base: "/cubing-trainer/"`
-2. Open in Bluefy on iOS
-3. Connect a cube and observe scrambles — they'll use the random-move fallback after an 8s timeout
-4. The "Test Worker" diagnostic button on the solve page tests individual chunk imports in a worker and reports which one fails
+The fix was a bundling strategy change, not a runtime patch. By controlling which code ends up in which chunk via `manualChunks`, we ensure the worker never loads React or twisty player DOM code. This is more robust than trying to shim DOM APIs at runtime.
