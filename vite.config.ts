@@ -25,35 +25,51 @@ function workerSafeChunks(): Plugin {
       for (const chunk of Object.values(bundle)) {
         if (chunk.type !== "chunk") continue;
 
-        // Patch the preload helper: guard DOM access for worker safety
+        // Inject DOM shim into the preload helper. Since ES module imports
+        // are hoisted, the shim must be in the first module the worker loads.
+        // The preload helper is imported by the worker entry before anything
+        // else, so injecting here ensures DOM stubs exist before cubing.js
+        // modules (which reference document/customElements) are evaluated.
+        // The shim is guarded by typeof document === "undefined" so it's
+        // a no-op on the main thread.
+        if (chunk.fileName.includes("preload-helper")) {
+          const domShim = `if(typeof document==="undefined"){` +
+            `const _noop=()=>new Proxy({},{get:()=>_noop,set:()=>true});` +
+            `globalThis.document=_noop();` +
+            `globalThis.HTMLElement=class{};` +
+            `globalThis.customElements={define:_noop,get:_noop};` +
+            `globalThis.CSSStyleSheet=class{replaceSync(){}};` +
+            `globalThis.window=globalThis;` +
+            `globalThis.localStorage={getItem:()=>null,setItem:_noop,removeItem:_noop};` +
+            `globalThis.navigator=_noop();}`;
+          chunk.code = domShim + chunk.code;
+        }
+
+        // Also guard the preload helper's own DOM access
         if (chunk.code.includes("modulepreload")) {
-          // Guard the preload branch that uses document
           chunk.code = chunk.code.replace(
             /if\(([a-zA-Z])&&\1\.length>0\)\{document\./g,
             'if($1&&$1.length>0&&typeof document!=="undefined"){document.',
           );
-          // Guard the error handler that uses window.dispatchEvent
           chunk.code = chunk.code.replace(
             /window\.dispatchEvent\(/g,
             '(typeof window!=="undefined"&&window.dispatchEvent)(',
           );
         }
 
-        // Patch the search worker entry: replace main bundle import with
-        // an inline expose flag so the worker doesn't load the entire app.
+        // Patch the search worker entry for worker compatibility.
         if (
           chunk.fileName.includes("search-worker-entry") &&
           chunk.code.includes("comlink-exposed")
         ) {
+          // Replace main bundle import with inline expose flag
           chunk.code = chunk.code.replace(
             /import\{(\w) as (\w)\}from"\.\/index-[^"]+\.js";/,
             "const $2={expose:true};",
           );
         }
 
-        // Remove bare side-effect imports of react-vendor from any chunk
-        // loaded in the worker. React references document at top level
-        // and crashes in worker contexts.
+        // Remove bare side-effect imports of react-vendor from worker chunks.
         if (
           chunk.fileName.includes("search-worker-entry") ||
           chunk.fileName.includes("inside-")
@@ -80,10 +96,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Split React and DOM-dependent libraries into their own chunk.
-          // This prevents the cubing.js solver (which runs in a web worker)
-          // from importing a chunk that contains React/DOM code, which
-          // crashes in worker contexts on iOS WKWebView.
           if (
             id.includes("node_modules/react") ||
             id.includes("node_modules/react-dom") ||
