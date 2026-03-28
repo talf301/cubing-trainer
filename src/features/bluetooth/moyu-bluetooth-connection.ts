@@ -646,7 +646,10 @@ export class MoYuBluetoothConnection implements CubeConnection {
         chrcts.find((c) => c.uuid === CHRT_UUID_WRITE) ?? null;
 
       if (!this.readChar || !this.writeChar) {
-        throw new Error("Required characteristics not found");
+        const found = chrcts.map((c) => c.uuid).join(", ");
+        throw new Error(
+          `Required characteristics not found. Expected ${CHRT_UUID_READ} and ${CHRT_UUID_WRITE}. Found: ${found || "none"}`,
+        );
       }
 
       // Step 4: Start notifications
