@@ -19,7 +19,7 @@ const PHASE_LABELS: Record<string, string> = {
 
 export function SolvePage({ connection }: SolvePageProps) {
   const { status, error, connect } = useCubeConnection(connection);
-  const { phase, displayMs, trackerState, recentSolves } =
+  const { phase, displayMs, trackerState, recentSolves, scrambleSource } =
     useSolveSession(connection);
 
   const isConnected = status === "connected";
@@ -40,6 +40,13 @@ export function SolvePage({ connection }: SolvePageProps) {
             <p className="mt-2 text-sm text-red-400">{error}</p>
           )}
         </div>
+      )}
+
+      {/* Scramble source diagnostic */}
+      {scrambleSource && (
+        <p className="text-center text-xs text-gray-500 font-mono">
+          scramble: {scrambleSource} | moduleWorker: {typeof Worker !== "undefined" ? "available" : "missing"}
+        </p>
       )}
 
       {/* Scramble display with progress */}

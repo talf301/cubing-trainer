@@ -6,6 +6,8 @@ import type { KPattern } from "cubing/kpuzzle";
 export interface ScrambleResult {
   scramble: string;
   expectedState: KPattern;
+  /** How the scramble was generated. */
+  source: "worker" | "fallback-no-module-worker" | "fallback-worker-cached-broken" | "fallback-timeout";
 }
 
 /** Standard 3x3 moves with quarter/half turns. */
@@ -68,35 +70,43 @@ function supportsModuleWorkers(): boolean {
 
 /** Tracks whether the cubing.js worker has ever produced a scramble. */
 let workerKnownGood = false;
-let workerKnownBad = localStorage.getItem("scramble-worker-broken") === "1";
+// Clear cached flag for fresh diagnosis
+localStorage.removeItem("scramble-worker-broken");
+let workerKnownBad = false;
 
 /** Race scramble generation against a timeout, falling back to random-move scramble. */
 export async function generateScramble(): Promise<ScrambleResult> {
   const kpuzzle = await cube3x3x3.kpuzzle();
 
   let scrambleStr: string;
-  if (workerKnownBad || !supportsModuleWorkers()) {
+  let source: ScrambleResult["source"];
+
+  if (!supportsModuleWorkers()) {
     scrambleStr = randomMoveScramble();
+    source = "fallback-no-module-worker";
+  } else if (workerKnownBad) {
+    scrambleStr = randomMoveScramble();
+    source = "fallback-worker-cached-broken";
   } else {
     try {
       const scrambleAlg = await Promise.race([
         randomScrambleForEvent("333"),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("scramble timeout")),
-            // Give extra time on first attempt for table initialization
             workerKnownGood ? 3000 : 8000,
           ),
         ),
       ]);
       scrambleStr = scrambleAlg.toString();
       workerKnownGood = true;
+      source = "worker";
     } catch {
       if (!workerKnownGood) {
-        // Worker never succeeded — stop trying, remember across sessions
         workerKnownBad = true;
         localStorage.setItem("scramble-worker-broken", "1");
       }
       scrambleStr = randomMoveScramble();
+      source = "fallback-timeout";
     }
   }
 
@@ -104,5 +114,5 @@ export async function generateScramble(): Promise<ScrambleResult> {
   const solved = kpuzzle.defaultPattern();
   const expectedState = solved.applyAlg(alg);
 
-  return { scramble: scrambleStr, expectedState };
+  return { scramble: scrambleStr, expectedState, source };
 }

@@ -31,9 +31,12 @@ export function useSolveSession(connection: CubeConnection) {
     });
   }, []);
 
+  const [scrambleSource, setScrambleSource] = useState<string>("");
+
   const startNewSolve = useCallback(async () => {
     const result = await generateScramble();
     setScramble(result.scramble);
+    setScrambleSource(result.source);
 
     // Create a new ScrambleTracker for this scramble.
     // Delay accepting moves briefly to let the GAN cube's buffered move burst flush.
@@ -155,6 +158,7 @@ export function useSolveSession(connection: CubeConnection) {
   return {
     phase,
     scramble,
+    scrambleSource,
     displayMs,
     trackerState,
     recentSolves,
