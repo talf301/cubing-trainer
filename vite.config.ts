@@ -73,6 +73,10 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), workerSafeChunks()],
   build: {
     target: "esnext",
+    // Disable the inline modulepreload polyfill. It uses document.createElement
+    // at the top level, which crashes when the index chunk is imported by the
+    // cubing.js search worker. Modern browsers support modulepreload natively.
+    modulePreload: { polyfill: false },
     rollupOptions: {
       output: {
         manualChunks(id) {
