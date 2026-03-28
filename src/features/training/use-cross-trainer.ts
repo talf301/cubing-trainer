@@ -32,7 +32,7 @@ export function useCrossTrainer(connection: CubeConnection) {
   const startNewScramble = useCallback(async () => {
     setResult(null);
     const [scrambleResult, kpuzzle] = await Promise.all([
-      generateScramble(),
+      generateScramble(connection.state ?? undefined),
       cube3x3x3.kpuzzle(),
     ]);
     setScramble(scrambleResult.scramble);
@@ -52,7 +52,7 @@ export function useCrossTrainer(connection: CubeConnection) {
       scrambleResult.expectedState,
       kpuzzle,
     );
-  }, []);
+  }, [connection]);
 
   // Auto-generate scramble on connect
   useEffect(() => {

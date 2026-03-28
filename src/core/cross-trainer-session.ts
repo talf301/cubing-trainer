@@ -81,9 +81,9 @@ export class CrossTrainerSession {
     this.solveStartTime = 0;
     this.solveEndTime = 0;
 
-    // Kick off optimal cross solver immediately
-    const scrambledPattern = kpuzzle.defaultPattern().applyAlg(scramble);
-    this.solverPromise = solveOptimalCross(kpuzzle, scrambledPattern, crossFace);
+    // Kick off optimal cross solver immediately using the expected state
+    // (which accounts for the cube's current position)
+    this.solverPromise = solveOptimalCross(kpuzzle, expectedState, crossFace);
 
     this.geometry = buildFaceGeometry(kpuzzle);
     this.setPhase("scrambling");
