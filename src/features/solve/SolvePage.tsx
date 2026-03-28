@@ -80,24 +80,59 @@ export function SolvePage({ connection }: SolvePageProps) {
       setWorkerDiag((prev) => prev + "\n[dynamic-import] create failed: " + (e as Error).message);
     }
 
-    // Test 4: Module worker importing a real URL
-    try {
-      const workerUrl = new URL(import.meta.env.BASE_URL + "worker-test.js", location.href).href;
-      const code2 = `try { const m = await import("${workerUrl}"); postMessage("url-import-ok"); } catch(e) { postMessage("url-import-fail: " + e.message); }`;
-      const blob = new Blob([code2], { type: "text/javascript" });
-      const url = URL.createObjectURL(blob);
-      const w4 = new Worker(url, { type: "module" });
-      w4.onmessage = (e) => {
-        setWorkerDiag((prev) => prev + "\n[url-import] " + e.data);
-        w4.terminate();
-        URL.revokeObjectURL(url);
-      };
-      w4.onerror = (e) => {
-        setWorkerDiag((prev) => prev + "\n[url-import] error: " + e.message);
-        URL.revokeObjectURL(url);
-      };
-    } catch (e) {
-      setWorkerDiag((prev) => prev + "\n[url-import] create failed: " + (e as Error).message);
+    // Test 4: Try importing the actual cubing.js worker entry in a worker
+    const scripts = Array.from(document.querySelectorAll('script[src]'));
+    const indexSrc = scripts.map(s => s.getAttribute('src')!).find(s => s?.includes('/assets/index-'));
+    if (indexSrc) {
+      // Fetch the index chunk to find chunk filenames
+      fetch(new URL(indexSrc, location.href).href)
+        .then(r => r.text())
+        .then(code => {
+          const base = new URL(indexSrc, location.href).href.replace(/[^/]+$/, '');
+          // Find chunk filenames
+          const find = (pat: string) => {
+            const re = new RegExp(`"(${pat}[^"]+\\.js)"`, 'g');
+            const m = [...code.matchAll(re)];
+            return m.length > 0 ? base + m[0][1] : null;
+          };
+
+          const preloadUrl = find("preload-helper");
+          const workerEntryUrl = find("search-worker-entry");
+          // Also find the index chunk URL itself
+          const indexUrl = new URL(indexSrc, location.href).href;
+
+          const urls = [
+            { name: "preload-helper", url: preloadUrl },
+            { name: "index", url: indexUrl },
+            { name: "worker-entry", url: workerEntryUrl },
+          ];
+
+          for (const { name, url } of urls) {
+            if (!url) {
+              setWorkerDiag(prev => prev + `\n[${name}] not found`);
+              continue;
+            }
+            const testCode = `
+              try {
+                await import("${url}");
+                postMessage("OK");
+              } catch(e) {
+                postMessage("FAIL: " + e.message + (e.stack ? "\\n" + e.stack.split("\\n").slice(0,3).join("\\n") : ""));
+              }
+            `;
+            const blob = new Blob([testCode], { type: "text/javascript" });
+            const blobUrl = URL.createObjectURL(blob);
+            const w = new Worker(blobUrl, { type: "module" });
+            const label = name;
+            w.onmessage = (e) => setWorkerDiag(prev => prev + `\n[${label}] ${e.data}`);
+            w.onerror = (e) => setWorkerDiag(prev => prev + `\n[${label}] onerror: ${e.message}`);
+            setTimeout(() => {
+              setWorkerDiag(prev => prev.includes(`[${label}]`) ? prev : prev + `\n[${label}] timeout (no response)`);
+              w.terminate();
+              URL.revokeObjectURL(blobUrl);
+            }, 8000);
+          }
+        });
     }
   }, []);
 
