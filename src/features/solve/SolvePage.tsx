@@ -1,12 +1,9 @@
 // src/features/solve/SolvePage.tsx
-import { useState, useEffect } from "react";
 import type { CubeConnection } from "@/core/cube-connection";
 import { useCubeConnection } from "@/features/bluetooth/use-cube-connection";
 import { useSolveSession } from "./use-solve-session";
 import { SolveHistory, formatTime } from "./SolveHistory";
 import { ScrambleDisplay } from "./ScrambleDisplay";
-import type { SmartCubeConnection } from "@/features/bluetooth/smart-cube-connection";
-import type { MoYuBluetoothConnection } from "@/features/bluetooth/moyu-bluetooth-connection";
 
 interface SolvePageProps {
   connection: CubeConnection;
@@ -22,27 +19,10 @@ const PHASE_LABELS: Record<string, string> = {
 
 export function SolvePage({ connection }: SolvePageProps) {
   const { status, error, connect } = useCubeConnection(connection);
-  const { phase, displayMs, trackerState, recentSolves, scrambleError } =
+  const { phase, displayMs, trackerState, recentSolves } =
     useSolveSession(connection);
 
   const isConnected = status === "connected";
-
-  // Debug: poll MoYu notification counters
-  const [debugInfo, setDebugInfo] = useState("");
-  useEffect(() => {
-    if (!isConnected) return;
-    const interval = setInterval(() => {
-      const smart = connection as SmartCubeConnection;
-      const delegate = smart.debugDelegate as MoYuBluetoothConnection | null;
-      if (delegate && "notificationCount" in delegate) {
-        const d = delegate as MoYuBluetoothConnection;
-        setDebugInfo(
-          `notif: ${d.notificationCount}, parsed: ${d.parsedCount}, opcode: 0x${d.lastOpcode.toString(16)}, writeProps: ${d.writeProps}${d.writeError ? `, writeErr: ${d.writeError}` : ""}`
-        );
-      }
-    }, 500);
-    return () => clearInterval(interval);
-  }, [isConnected, connection]);
 
   return (
     <div className="space-y-8">
@@ -60,14 +40,6 @@ export function SolvePage({ connection }: SolvePageProps) {
             <p className="mt-2 text-sm text-red-400">{error}</p>
           )}
         </div>
-      )}
-
-      {/* Debug info */}
-      {isConnected && debugInfo && (
-        <p className="text-center text-xs text-gray-500 font-mono">{debugInfo}</p>
-      )}
-      {scrambleError && (
-        <p className="text-center text-sm text-red-400">Scramble error: {scrambleError}</p>
       )}
 
       {/* Scramble display with progress */}

@@ -581,18 +581,6 @@ export class MoYuBluetoothConnection implements CubeConnection {
   private deviceTime = 0;
   private deviceTimeOffset = 0;
 
-  // Debug counters
-  /** Total notifications received from the cube. */
-  notificationCount = 0;
-  /** Notifications that decrypted to a recognized opcode. */
-  parsedCount = 0;
-  /** Last raw opcode byte seen after decryption (0 = none yet). */
-  lastOpcode = 0;
-  /** Write characteristic properties for debugging. */
-  writeProps = "";
-  /** Whether writes threw an error. */
-  writeError = "";
-
   // Event listeners
   private moveListeners = new Set<(event: CubeMoveEvent) => void>();
   private statusListeners = new Set<(status: ConnectionStatus) => void>();
@@ -658,10 +646,7 @@ export class MoYuBluetoothConnection implements CubeConnection {
         chrcts.find((c) => c.uuid.toLowerCase() === CHRT_UUID_WRITE) ?? null;
 
       if (!this.readChar || !this.writeChar) {
-        const found = chrcts.map((c) => c.uuid).join(", ");
-        throw new Error(
-          `Required characteristics not found. Expected ${CHRT_UUID_READ} and ${CHRT_UUID_WRITE}. Found: ${found || "none"}`,
-        );
+        throw new Error("Required characteristics not found");
       }
 
       // Step 4: Start notifications
@@ -679,23 +664,10 @@ export class MoYuBluetoothConnection implements CubeConnection {
         this.onDisconnected,
       );
 
-      // Log write characteristic properties for debugging
-      const p = this.writeChar.properties;
-      this.writeProps = [
-        p.write && "write",
-        p.writeWithoutResponse && "writeWithoutResponse",
-        p.notify && "notify",
-        p.read && "read",
-      ].filter(Boolean).join(",") || "none";
-
       // Step 6: Request initial state
-      try {
-        await this.sendRequest(0xa1); // info
-        await this.sendRequest(0xa3); // facelets
-        await this.sendRequest(0xa4); // battery
-      } catch (e) {
-        this.writeError = e instanceof Error ? e.message : String(e);
-      }
+      await this.sendRequest(0xa1); // info
+      await this.sendRequest(0xa3); // facelets
+      await this.sendRequest(0xa4); // battery
 
       this.setStatus("connected");
     } catch (error) {
@@ -742,18 +714,31 @@ export class MoYuBluetoothConnection implements CubeConnection {
 
   // ── Internal helpers ────────────────────────────────────────────────────
 
+  /** localStorage key for caching a device's MAC address. */
+  private get macCacheKey(): string {
+    return `moyu-mac:${this.device.name ?? this.device.id}`;
+  }
+
   /**
    * Try to determine the cube's MAC address:
-   * 1. Watch for BLE advertisements (manufacturer data)
-   * 2. Parse from device name (WCU_MY32_XXXX pattern)
+   * 1. Check localStorage cache
+   * 2. Watch for BLE advertisements (manufacturer data)
    * 3. Prompt the user as last resort
+   * Caches the result for future connections.
    */
   private async resolveMacAddress(): Promise<string> {
-    // Try advertisement data first
-    const advMac = await this.tryAdvertisementMac().catch(() => null);
-    if (advMac) return advMac;
+    // Check cache first
+    const cached = localStorage.getItem(this.macCacheKey);
+    if (cached) return cached;
 
-    // Last resort: prompt user (name-based derivation is unreliable — prefix byte varies)
+    // Try advertisement data
+    const advMac = await this.tryAdvertisementMac().catch(() => null);
+    if (advMac) {
+      localStorage.setItem(this.macCacheKey, advMac);
+      return advMac;
+    }
+
+    // Last resort: prompt user
     const mac = prompt(
       "Could not automatically detect cube MAC address.\n" +
         "Enter MAC address (from chrome://bluetooth-internals):\n" +
@@ -762,6 +747,7 @@ export class MoYuBluetoothConnection implements CubeConnection {
     if (!mac) {
       throw new Error("MAC address required for MoYu cube connection");
     }
+    localStorage.setItem(this.macCacheKey, mac);
     return mac;
   }
 
@@ -853,11 +839,8 @@ export class MoYuBluetoothConnection implements CubeConnection {
 
     const raw = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
     const decrypted = await this.cipher.decrypt(raw);
-    this.notificationCount++;
-    this.lastOpcode = decrypted[0];
     const msg = parseMessage(decrypted);
     if (!msg) return;
-    this.parsedCount++;
 
     switch (msg.type) {
       case "facelets":

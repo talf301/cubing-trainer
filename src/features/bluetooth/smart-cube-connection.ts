@@ -73,11 +73,6 @@ export class SmartCubeConnection implements CubeConnection {
     return this.delegate?.state ?? null;
   }
 
-  /** Expose the inner delegate for debugging. */
-  get debugDelegate(): CubeConnection | null {
-    return this.delegate;
-  }
-
   get battery(): number | null {
     return this.delegate?.battery ?? null;
   }
