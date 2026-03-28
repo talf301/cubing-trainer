@@ -581,6 +581,14 @@ export class MoYuBluetoothConnection implements CubeConnection {
   private deviceTime = 0;
   private deviceTimeOffset = 0;
 
+  // Debug counters
+  /** Total notifications received from the cube. */
+  notificationCount = 0;
+  /** Notifications that decrypted to a recognized opcode. */
+  parsedCount = 0;
+  /** Last raw opcode byte seen after decryption (0 = none yet). */
+  lastOpcode = 0;
+
   // Event listeners
   private moveListeners = new Set<(event: CubeMoveEvent) => void>();
   private statusListeners = new Set<(status: ConnectionStatus) => void>();
@@ -820,8 +828,11 @@ export class MoYuBluetoothConnection implements CubeConnection {
 
     const raw = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
     const decrypted = await this.cipher.decrypt(raw);
+    this.notificationCount++;
+    this.lastOpcode = decrypted[0];
     const msg = parseMessage(decrypted);
     if (!msg) return;
+    this.parsedCount++;
 
     switch (msg.type) {
       case "facelets":

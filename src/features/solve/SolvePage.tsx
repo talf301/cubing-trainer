@@ -1,9 +1,12 @@
 // src/features/solve/SolvePage.tsx
+import { useState, useEffect } from "react";
 import type { CubeConnection } from "@/core/cube-connection";
 import { useCubeConnection } from "@/features/bluetooth/use-cube-connection";
 import { useSolveSession } from "./use-solve-session";
 import { SolveHistory, formatTime } from "./SolveHistory";
 import { ScrambleDisplay } from "./ScrambleDisplay";
+import type { SmartCubeConnection } from "@/features/bluetooth/smart-cube-connection";
+import type { MoYuBluetoothConnection } from "@/features/bluetooth/moyu-bluetooth-connection";
 
 interface SolvePageProps {
   connection: CubeConnection;
@@ -24,6 +27,23 @@ export function SolvePage({ connection }: SolvePageProps) {
 
   const isConnected = status === "connected";
 
+  // Debug: poll MoYu notification counters
+  const [debugInfo, setDebugInfo] = useState("");
+  useEffect(() => {
+    if (!isConnected) return;
+    const interval = setInterval(() => {
+      const smart = connection as SmartCubeConnection;
+      const delegate = smart.debugDelegate as MoYuBluetoothConnection | null;
+      if (delegate && "notificationCount" in delegate) {
+        const d = delegate as MoYuBluetoothConnection;
+        setDebugInfo(
+          `notifications: ${d.notificationCount}, parsed: ${d.parsedCount}, lastOpcode: 0x${d.lastOpcode.toString(16)}`
+        );
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [isConnected, connection]);
+
   return (
     <div className="space-y-8">
       {/* Connection status */}
@@ -40,6 +60,11 @@ export function SolvePage({ connection }: SolvePageProps) {
             <p className="mt-2 text-sm text-red-400">{error}</p>
           )}
         </div>
+      )}
+
+      {/* Debug info */}
+      {isConnected && debugInfo && (
+        <p className="text-center text-xs text-gray-500 font-mono">{debugInfo}</p>
       )}
 
       {/* Scramble display with progress */}
