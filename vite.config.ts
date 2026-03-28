@@ -10,6 +10,9 @@ export default defineConfig({
   build: {
     target: "esnext",
   },
+  worker: {
+    format: "es",
+  },
   esbuild: {
     target: "esnext", // cubing.js search worker uses top-level await
   },
