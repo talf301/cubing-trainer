@@ -5,17 +5,17 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
 /**
- * Vite plugin: make shared chunks safe for worker contexts.
+ * Vite plugin: guard Vite's modulepreload helper for worker contexts.
  *
- * Vite shares chunks between the main thread and web workers. The cubing.js
- * search worker entry imports the main app bundle (for a tiny `expose` flag)
- * and a preload helper (which uses DOM APIs). On desktop Chrome, unused DOM
- * references in imported modules are tolerated. On iOS WKWebView (Bluefy),
- * the worker crashes during module evaluation.
+ * Vite inlines a modulepreload helper into chunks. Its code references
+ * `document` and `window` at the top level, which crashes in workers on
+ * iOS WKWebView. This plugin adds typeof guards so the helper is a no-op
+ * when DOM APIs are unavailable.
  *
- * This plugin patches:
- * 1. The preload helper — guards DOM access behind `typeof document` checks
- * 2. The worker entry — replaces the main bundle import with an inline flag
+ * The heavy lifting for worker compatibility is done by manualChunks
+ * (below), which keeps cubing.js core code in a separate chunk from
+ * React and twisty player DOM code. cubing.js's own code already guards
+ * its DOM access with `globalThis.HTMLElement ? ... : fallback` patterns.
  */
 function workerSafeChunks(): Plugin {
   return {
@@ -25,33 +25,7 @@ function workerSafeChunks(): Plugin {
       for (const chunk of Object.values(bundle)) {
         if (chunk.type !== "chunk") continue;
 
-        // Inject DOM shim into the preload helper. Since ES module imports
-        // are hoisted, the shim must be in the first module the worker loads.
-        // The preload helper is imported by the worker entry before anything
-        // else, so injecting here ensures DOM stubs exist before cubing.js
-        // modules (which reference document/customElements) are evaluated.
-        // The shim is guarded by typeof document === "undefined" so it's
-        // a no-op on the main thread.
-        if (chunk.fileName.includes("preload-helper")) {
-          // Only shim globals that don't exist in workers. Workers already
-          // have `window` (alias for `self`), `navigator`, and `localStorage`
-          // on some engines — redefining them on iOS WKWebView throws
-          // "Attempted to assign to readonly property" from within
-          // Object.defineProperty in a way that bypasses try/catch.
-          const domShim = `if(typeof document==="undefined"){` +
-            `const _noop=()=>new Proxy({},{get:()=>_noop,set:()=>true});` +
-            `const _def=(n,v)=>{if(!(n in globalThis)){try{Object.defineProperty(globalThis,n,{value:v,writable:true,configurable:true})}catch{}}};` +
-            `_def("document",_noop());` +
-            `_def("HTMLElement",class{});` +
-            `_def("customElements",{define:_noop,get:_noop});` +
-            `_def("CSSStyleSheet",class{replaceSync(){}});` +
-            `_def("window",globalThis);` +
-            `_def("localStorage",{getItem:()=>null,setItem:_noop,removeItem:_noop});` +
-            `_def("navigator",_noop());}`;
-          chunk.code = domShim + chunk.code;
-        }
-
-        // Also guard the preload helper's own DOM access
+        // Guard Vite's modulepreload helper DOM access
         if (chunk.code.includes("modulepreload")) {
           chunk.code = chunk.code.replace(
             /if\(([a-zA-Z])&&\1\.length>0\)\{document\./g,
@@ -60,29 +34,6 @@ function workerSafeChunks(): Plugin {
           chunk.code = chunk.code.replace(
             /window\.dispatchEvent\(/g,
             '(typeof window!=="undefined"&&window.dispatchEvent)(',
-          );
-        }
-
-        // Patch the search worker entry for worker compatibility.
-        if (
-          chunk.fileName.includes("search-worker-entry") &&
-          chunk.code.includes("comlink-exposed")
-        ) {
-          // Replace main bundle import with inline expose flag
-          chunk.code = chunk.code.replace(
-            /import\{(\w) as (\w)\}from"\.\/index-[^"]+\.js";/,
-            "const $2={expose:true};",
-          );
-        }
-
-        // Remove bare side-effect imports of react-vendor from worker chunks.
-        if (
-          chunk.fileName.includes("search-worker-entry") ||
-          chunk.fileName.includes("inside-")
-        ) {
-          chunk.code = chunk.code.replace(
-            /import"\.\/react-vendor-[^"]+\.js";/g,
-            "",
           );
         }
       }
@@ -108,6 +59,20 @@ export default defineConfig({
             id.includes("node_modules/react-router")
           ) {
             return "react-vendor";
+          }
+          // Keep cubing.js core (DOM-free) code in its own chunk so the
+          // search worker's inside chunk imports from here instead of from
+          // the index chunk (which contains React + twisty player DOM code).
+          // Exclude worker entry and inside chunks — they must remain
+          // separate for the worker's dynamic import to work.
+          if (
+            id.includes("node_modules/cubing") &&
+            !id.includes("/twisty/") &&
+            !id.includes("twisty-dynamic") &&
+            !id.includes("search-worker-entry") &&
+            !id.includes("/inside")
+          ) {
+            return "cubing-core";
           }
         },
       },
