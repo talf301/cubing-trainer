@@ -68,7 +68,7 @@ function supportsModuleWorkers(): boolean {
 
 /** Tracks whether the cubing.js worker has ever produced a scramble. */
 let workerKnownGood = false;
-let workerKnownBad = false;
+let workerKnownBad = localStorage.getItem("scramble-worker-broken") === "1";
 
 /** Race scramble generation against a timeout, falling back to random-move scramble. */
 export async function generateScramble(): Promise<ScrambleResult> {
@@ -92,8 +92,9 @@ export async function generateScramble(): Promise<ScrambleResult> {
       workerKnownGood = true;
     } catch {
       if (!workerKnownGood) {
-        // Worker never succeeded — stop trying
+        // Worker never succeeded — stop trying, remember across sessions
         workerKnownBad = true;
+        localStorage.setItem("scramble-worker-broken", "1");
       }
       scrambleStr = randomMoveScramble();
     }
