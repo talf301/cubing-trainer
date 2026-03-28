@@ -70,9 +70,8 @@ function supportsModuleWorkers(): boolean {
 
 /** Tracks whether the cubing.js worker has ever produced a scramble. */
 let workerKnownGood = false;
-let workerKnownBad = false;
-// Force fresh diagnosis — clear any cached flag from previous sessions
-localStorage.removeItem("scramble-worker-broken");
+let workerKnownBad: boolean;
+try { workerKnownBad = localStorage.getItem("scramble-worker-broken") === "1"; } catch { workerKnownBad = false; }
 
 /** Race scramble generation against a timeout, falling back to random-move scramble. */
 export async function generateScramble(): Promise<ScrambleResult> {
@@ -103,7 +102,7 @@ export async function generateScramble(): Promise<ScrambleResult> {
     } catch {
       if (!workerKnownGood) {
         workerKnownBad = true;
-        localStorage.setItem("scramble-worker-broken", "1");
+        try { localStorage.setItem("scramble-worker-broken", "1"); } catch { /* workers lack localStorage */ }
       }
       scrambleStr = randomMoveScramble();
       source = "fallback-timeout";
