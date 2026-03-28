@@ -70,9 +70,9 @@ function supportsModuleWorkers(): boolean {
 
 /** Tracks whether the cubing.js worker has ever produced a scramble. */
 let workerKnownGood = false;
-// Clear cached flag for fresh diagnosis
-localStorage.removeItem("scramble-worker-broken");
 let workerKnownBad = false;
+// Force fresh diagnosis — clear any cached flag from previous sessions
+localStorage.removeItem("scramble-worker-broken");
 
 /** Race scramble generation against a timeout, falling back to random-move scramble. */
 export async function generateScramble(): Promise<ScrambleResult> {
