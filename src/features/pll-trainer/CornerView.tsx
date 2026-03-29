@@ -1,147 +1,146 @@
 import { type Color, COLOR_HEX } from "@/core/pll-types";
 
 /**
- * CornerView — SVG rendering of a cube corner with 25° skew, front-biased.
+ * CornerView — SVG rendering of a cube corner from above.
  *
- * Shows two faces of a cube corner. Each face has 3 stickers arranged
- * horizontally (left corner, edge, right corner of the top row).
- * Faces meet at the ridge (shared inner edge) and the outer edges
- * splay outward at the bottom, forming a Λ shape.
+ * Shows the U face as a triangle at the top (solid color), with two
+ * side face sticker strips below forming a tent/A-frame shape.
+ * The right (front) face is wider for a front-biased perspective.
  *
  * Props:
  *   stickers: Color[6]
- *     - indices 0-2: left/side face (narrower), left to right
- *     - indices 3-5: right/front face (wider), left to right
- *   size?: number — overall width in px (default 200)
+ *     - indices 0-2: left/side face, left to right
+ *     - indices 3-5: right/front face, left to right
+ *   topColor?: Color — U face color (default "white")
+ *   size?: number — overall width in px (default 240)
  */
 
 export interface CornerViewProps {
   stickers: readonly Color[];
+  topColor?: Color;
   size?: number;
 }
 
-const SKEW_DEG = 25;
-const SKEW_RAD = (SKEW_DEG * Math.PI) / 180;
+// Layout constants
+const RIDGE_X = 95; // x of the ridge / corner vertex
+const CORNER_Y = 6; // y of corner vertex (topmost point)
+const STRIP_TOP_Y = 30; // where side face strips begin
+const STRIP_BOT_Y = 70; // where side face strips end
+const LEFT_TOP_W = 48; // left face width at strip top
+const RIGHT_TOP_W = 68; // right face width at strip top (front-biased)
+const SPLAY = 0.3; // outward splay per pixel of strip height
+const GAP = 1.5;
 
-const LEFT_FACE_WIDTH = 36;
-const RIGHT_FACE_WIDTH = 54;
-const FACE_HEIGHT = 44;
-const GAP = 2;
+// Derived
+const STRIP_H = STRIP_BOT_Y - STRIP_TOP_Y;
+const LEFT_BOT_W = LEFT_TOP_W + STRIP_H * SPLAY;
+const RIGHT_BOT_W = RIGHT_TOP_W + STRIP_H * SPLAY;
 
-// Ridge x position — the shared inner edge of both faces
-const RIDGE_X = LEFT_FACE_WIDTH + 4;
+// Key points
+const TOP_LEFT = { x: RIDGE_X - LEFT_TOP_W, y: STRIP_TOP_Y };
+const TOP_RIGHT = { x: RIDGE_X + RIGHT_TOP_W, y: STRIP_TOP_Y };
+const BOT_LEFT = { x: RIDGE_X - LEFT_BOT_W, y: STRIP_BOT_Y };
+const BOT_RIGHT = { x: RIDGE_X + RIGHT_BOT_W, y: STRIP_BOT_Y };
 
-/**
- * Interpolate x between top and bottom of a face for a given y.
- * Each face is a trapezoid: inner edge is vertical (ridge),
- * outer edge splays outward at the bottom.
- */
-function lerp(topX: number, botX: number, y: number): number {
-  return topX + (botX - topX) * (y / FACE_HEIGHT);
-}
-
-/**
- * Compute sticker parallelogram for the left face.
- * The face goes from the ridge (right edge, vertical) to the outer edge (splays left).
- * col 0 = leftmost (outer), col 2 = rightmost (near ridge).
- */
-function leftStickerPoints(col: number): string {
-  const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
-  const topOuter = RIDGE_X - LEFT_FACE_WIDTH;
-  const botOuter = RIDGE_X - LEFT_FACE_WIDTH - bottomSkew;
-
-  // At top: face width = LEFT_FACE_WIDTH, stickers divide it
-  // At bottom: face width = LEFT_FACE_WIDTH + bottomSkew
-  const stickerFrac0 = (GAP + col * (1 / 3)) / 1; // not quite — need proportional
-  // Divide face into 3 equal columns with gaps, proportionally at top and bottom
-  const topW = LEFT_FACE_WIDTH;
-  const botW = LEFT_FACE_WIDTH + bottomSkew;
-  const topStickerW = (topW - GAP * 4) / 3;
-  const botStickerW = (botW - GAP * 4) / 3;
-
-  const y0 = GAP;
-  const y1 = FACE_HEIGHT - GAP;
-
-  const x0TopL = topOuter + GAP + col * (topStickerW + GAP);
-  const x0TopR = x0TopL + topStickerW;
-  const x0BotL = botOuter + GAP + col * (botStickerW + GAP);
-  const x0BotR = x0BotL + botStickerW;
-
-  return `${x0TopL},${y0} ${x0TopR},${y0} ${x0BotR},${y1} ${x0BotL},${y1}`;
-}
-
-/**
- * Compute sticker parallelogram for the right face.
- * The face goes from the ridge (left edge, vertical) to the outer edge (splays right).
- * col 0 = leftmost (near ridge), col 2 = rightmost (outer).
- */
-function rightStickerPoints(col: number): string {
-  const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
-
-  const topW = RIGHT_FACE_WIDTH;
-  const botW = RIGHT_FACE_WIDTH + bottomSkew;
-  const topStickerW = (topW - GAP * 4) / 3;
-  const botStickerW = (botW - GAP * 4) / 3;
-
-  const y0 = GAP;
-  const y1 = FACE_HEIGHT - GAP;
-
-  const x0TopL = RIDGE_X + GAP + col * (topStickerW + GAP);
-  const x0TopR = x0TopL + topStickerW;
-  const x0BotL = RIDGE_X + GAP + col * (botStickerW + GAP);
-  const x0BotR = x0BotL + botStickerW;
-
-  return `${x0TopL},${y0} ${x0TopR},${y0} ${x0BotR},${y1} ${x0BotL},${y1}`;
+function topFacePoints(): string {
+  return `${RIDGE_X},${CORNER_Y} ${TOP_LEFT.x},${TOP_LEFT.y} ${TOP_RIGHT.x},${TOP_RIGHT.y}`;
 }
 
 function leftFaceOutline(): string {
-  const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
-  const tl = `${RIDGE_X - LEFT_FACE_WIDTH},0`;
-  const tr = `${RIDGE_X},0`;
-  const br = `${RIDGE_X},${FACE_HEIGHT}`;
-  const bl = `${RIDGE_X - LEFT_FACE_WIDTH - bottomSkew},${FACE_HEIGHT}`;
-  return `${tl} ${tr} ${br} ${bl}`;
+  return `${TOP_LEFT.x},${TOP_LEFT.y} ${RIDGE_X},${STRIP_TOP_Y} ${RIDGE_X},${STRIP_BOT_Y} ${BOT_LEFT.x},${BOT_LEFT.y}`;
 }
 
 function rightFaceOutline(): string {
-  const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
-  const tl = `${RIDGE_X},0`;
-  const tr = `${RIDGE_X + RIGHT_FACE_WIDTH},0`;
-  const br = `${RIDGE_X + RIGHT_FACE_WIDTH + bottomSkew},${FACE_HEIGHT}`;
-  const bl = `${RIDGE_X},${FACE_HEIGHT}`;
-  return `${tl} ${tr} ${br} ${bl}`;
+  return `${RIDGE_X},${STRIP_TOP_Y} ${TOP_RIGHT.x},${TOP_RIGHT.y} ${BOT_RIGHT.x},${BOT_RIGHT.y} ${RIDGE_X},${STRIP_BOT_Y}`;
 }
 
-export function CornerView({ stickers, size = 200 }: CornerViewProps) {
-  const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
-  const minX = RIDGE_X - LEFT_FACE_WIDTH - bottomSkew - 1;
-  const maxX = RIDGE_X + RIGHT_FACE_WIDTH + bottomSkew + 1;
-  const viewBoxWidth = maxX - minX;
-  const viewBoxHeight = FACE_HEIGHT + 2;
+/**
+ * Compute sticker quadrilateral within the left face strip.
+ * col 0 = leftmost (outer), col 2 = rightmost (near ridge).
+ */
+function leftStickerPoints(col: number): string {
+  const topW = LEFT_TOP_W;
+  const botW = LEFT_BOT_W;
+  const topSW = (topW - GAP * 4) / 3;
+  const botSW = (botW - GAP * 4) / 3;
 
+  const y0 = STRIP_TOP_Y + GAP;
+  const y1 = STRIP_BOT_Y - GAP;
+
+  const topOuter = RIDGE_X - topW;
+  const botOuter = RIDGE_X - botW;
+
+  const x0TopL = topOuter + GAP + col * (topSW + GAP);
+  const x0TopR = x0TopL + topSW;
+  const x0BotL = botOuter + GAP + col * (botSW + GAP);
+  const x0BotR = x0BotL + botSW;
+
+  return `${x0TopL},${y0} ${x0TopR},${y0} ${x0BotR},${y1} ${x0BotL},${y1}`;
+}
+
+/**
+ * Compute sticker quadrilateral within the right face strip.
+ * col 0 = leftmost (near ridge), col 2 = rightmost (outer).
+ */
+function rightStickerPoints(col: number): string {
+  const topW = RIGHT_TOP_W;
+  const botW = RIGHT_BOT_W;
+  const topSW = (topW - GAP * 4) / 3;
+  const botSW = (botW - GAP * 4) / 3;
+
+  const y0 = STRIP_TOP_Y + GAP;
+  const y1 = STRIP_BOT_Y - GAP;
+
+  const x0TopL = RIDGE_X + GAP + col * (topSW + GAP);
+  const x0TopR = x0TopL + topSW;
+  const x0BotL = RIDGE_X + GAP + col * (botSW + GAP);
+  const x0BotR = x0BotL + botSW;
+
+  return `${x0TopL},${y0} ${x0TopR},${y0} ${x0BotR},${y1} ${x0BotL},${y1}`;
+}
+
+export function CornerView({
+  stickers,
+  topColor = "white",
+  size = 240,
+}: CornerViewProps) {
+  const minX = BOT_LEFT.x - 2;
+  const maxX = BOT_RIGHT.x + 2;
+  const viewBoxWidth = maxX - minX;
+  const viewBoxHeight = STRIP_BOT_Y - CORNER_Y + 4;
   const svgHeight = (viewBoxHeight / viewBoxWidth) * size;
 
   return (
     <svg
       width={size}
       height={svgHeight}
-      viewBox={`${minX} -1 ${viewBoxWidth} ${viewBoxHeight}`}
+      viewBox={`${minX} ${CORNER_Y - 2} ${viewBoxWidth} ${viewBoxHeight}`}
       role="img"
       aria-label="Cube corner view"
     >
+      {/* Top (U) face — solid color triangle */}
+      <polygon
+        points={topFacePoints()}
+        fill={COLOR_HEX[topColor]}
+        stroke="#333"
+        strokeWidth="0.8"
+      />
+
+      {/* Side face outlines */}
       <polygon
         points={leftFaceOutline()}
         fill="#1a1a1a"
         stroke="#333"
-        strokeWidth="1"
+        strokeWidth="0.8"
       />
       <polygon
         points={rightFaceOutline()}
         fill="#1a1a1a"
         stroke="#333"
-        strokeWidth="1"
+        strokeWidth="0.8"
       />
 
+      {/* Left face stickers (indices 0-2) */}
       {[0, 1, 2].map((col) => (
         <polygon
           key={`left-${col}`}
@@ -152,6 +151,7 @@ export function CornerView({ stickers, size = 200 }: CornerViewProps) {
         />
       ))}
 
+      {/* Right face stickers (indices 3-5) */}
       {[0, 1, 2].map((col) => (
         <polygon
           key={`right-${col}`}
@@ -162,13 +162,14 @@ export function CornerView({ stickers, size = 200 }: CornerViewProps) {
         />
       ))}
 
+      {/* Ridge line */}
       <line
         x1={RIDGE_X}
-        y1={0}
+        y1={STRIP_TOP_Y}
         x2={RIDGE_X}
-        y2={FACE_HEIGHT}
+        y2={STRIP_BOT_Y}
         stroke="#555"
-        strokeWidth="1.5"
+        strokeWidth="1.2"
       />
     </svg>
   );
