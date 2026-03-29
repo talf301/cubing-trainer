@@ -5,7 +5,8 @@ import { type Color, COLOR_HEX } from "@/core/pll-types";
  *
  * Shows two faces of a cube corner. Each face has 3 stickers arranged
  * horizontally (left corner, edge, right corner of the top row).
- * Faces meet at the top ridge and splay outward at the bottom (Λ shape).
+ * Faces meet at the ridge (shared inner edge) and the outer edges
+ * splay outward at the bottom, forming a Λ shape.
  *
  * Props:
  *   stickers: Color[6]
@@ -15,93 +16,99 @@ import { type Color, COLOR_HEX } from "@/core/pll-types";
  */
 
 export interface CornerViewProps {
-  /** 6 sticker colors: [left0, left1, left2, right0, right1, right2] */
   stickers: readonly Color[];
-  /** Overall width in px (default 200) */
   size?: number;
 }
 
-// Skew angle in degrees — front-biased means the right face is wider
 const SKEW_DEG = 25;
 const SKEW_RAD = (SKEW_DEG * Math.PI) / 180;
 
-// Face dimensions
-const LEFT_FACE_WIDTH = 36; // narrower side face
-const RIGHT_FACE_WIDTH = 54; // wider front face
-const FACE_HEIGHT = 44; // height of the sticker strip (single row)
-const GAP = 2; // gap between stickers and edges
+const LEFT_FACE_WIDTH = 36;
+const RIGHT_FACE_WIDTH = 54;
+const FACE_HEIGHT = 44;
+const GAP = 2;
 
-// The dividing ridge (where the two faces meet) x position
+// Ridge x position — the shared inner edge of both faces
 const RIDGE_X = LEFT_FACE_WIDTH + 4;
 
 /**
- * Compute the 4 corner points of a parallelogram sticker on the left face.
- * col 0 = leftmost (furthest from ridge), col 2 = rightmost (nearest ridge).
+ * Interpolate x between top and bottom of a face for a given y.
+ * Each face is a trapezoid: inner edge is vertical (ridge),
+ * outer edge splays outward at the bottom.
  */
-function leftStickerPoints(col: number): string {
-  const faceWidth = LEFT_FACE_WIDTH;
-  const stickerW = (faceWidth - GAP * 4) / 3;
-  const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
-
-  // x positions at top (y=0): face goes from RIDGE_X - faceWidth to RIDGE_X
-  // x positions at bottom (y=FACE_HEIGHT): shifted left by bottomSkew
-  const topLeft = RIDGE_X - faceWidth;
-  const botLeft = RIDGE_X - faceWidth - bottomSkew;
-
-  // Each column: interpolate between top and bottom edges
-  const x0Top = topLeft + GAP + col * (stickerW + GAP);
-  const x1Top = x0Top + stickerW;
-  const x0Bot = botLeft + GAP + col * (stickerW + GAP);
-  const x1Bot = x0Bot + stickerW;
-
-  const y0 = GAP;
-  const y1 = FACE_HEIGHT - GAP;
-
-  return `${x0Top},${y0} ${x1Top},${y0} ${x1Bot},${y1} ${x0Bot},${y1}`;
+function lerp(topX: number, botX: number, y: number): number {
+  return topX + (botX - topX) * (y / FACE_HEIGHT);
 }
 
 /**
- * Compute the 4 corner points of a parallelogram sticker on the right face.
- * col 0 = leftmost (nearest ridge), col 2 = rightmost (furthest from ridge).
+ * Compute sticker parallelogram for the left face.
+ * The face goes from the ridge (right edge, vertical) to the outer edge (splays left).
+ * col 0 = leftmost (outer), col 2 = rightmost (near ridge).
  */
-function rightStickerPoints(col: number): string {
-  const faceWidth = RIGHT_FACE_WIDTH;
-  const stickerW = (faceWidth - GAP * 4) / 3;
+function leftStickerPoints(col: number): string {
   const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
+  const topOuter = RIDGE_X - LEFT_FACE_WIDTH;
+  const botOuter = RIDGE_X - LEFT_FACE_WIDTH - bottomSkew;
 
-  // x positions at top (y=0): face goes from RIDGE_X to RIDGE_X + faceWidth
-  // x positions at bottom (y=FACE_HEIGHT): shifted right by bottomSkew
-  const topLeft = RIDGE_X;
-  const botLeft = RIDGE_X + bottomSkew;
-
-  const x0Top = topLeft + GAP + col * (stickerW + GAP);
-  const x1Top = x0Top + stickerW;
-  const x0Bot = botLeft + GAP + col * (stickerW + GAP);
-  const x1Bot = x0Bot + stickerW;
+  // At top: face width = LEFT_FACE_WIDTH, stickers divide it
+  // At bottom: face width = LEFT_FACE_WIDTH + bottomSkew
+  const stickerFrac0 = (GAP + col * (1 / 3)) / 1; // not quite — need proportional
+  // Divide face into 3 equal columns with gaps, proportionally at top and bottom
+  const topW = LEFT_FACE_WIDTH;
+  const botW = LEFT_FACE_WIDTH + bottomSkew;
+  const topStickerW = (topW - GAP * 4) / 3;
+  const botStickerW = (botW - GAP * 4) / 3;
 
   const y0 = GAP;
   const y1 = FACE_HEIGHT - GAP;
 
-  return `${x0Top},${y0} ${x1Top},${y0} ${x1Bot},${y1} ${x0Bot},${y1}`;
+  const x0TopL = topOuter + GAP + col * (topStickerW + GAP);
+  const x0TopR = x0TopL + topStickerW;
+  const x0BotL = botOuter + GAP + col * (botStickerW + GAP);
+  const x0BotR = x0BotL + botStickerW;
+
+  return `${x0TopL},${y0} ${x0TopR},${y0} ${x0BotR},${y1} ${x0BotL},${y1}`;
 }
 
-/** Left face outline (parallelogram) — meets ridge at top, splays at bottom */
+/**
+ * Compute sticker parallelogram for the right face.
+ * The face goes from the ridge (left edge, vertical) to the outer edge (splays right).
+ * col 0 = leftmost (near ridge), col 2 = rightmost (outer).
+ */
+function rightStickerPoints(col: number): string {
+  const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
+
+  const topW = RIGHT_FACE_WIDTH;
+  const botW = RIGHT_FACE_WIDTH + bottomSkew;
+  const topStickerW = (topW - GAP * 4) / 3;
+  const botStickerW = (botW - GAP * 4) / 3;
+
+  const y0 = GAP;
+  const y1 = FACE_HEIGHT - GAP;
+
+  const x0TopL = RIDGE_X + GAP + col * (topStickerW + GAP);
+  const x0TopR = x0TopL + topStickerW;
+  const x0BotL = RIDGE_X + GAP + col * (botStickerW + GAP);
+  const x0BotR = x0BotL + botStickerW;
+
+  return `${x0TopL},${y0} ${x0TopR},${y0} ${x0BotR},${y1} ${x0BotL},${y1}`;
+}
+
 function leftFaceOutline(): string {
   const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
   const tl = `${RIDGE_X - LEFT_FACE_WIDTH},0`;
   const tr = `${RIDGE_X},0`;
-  const br = `${RIDGE_X - bottomSkew},${FACE_HEIGHT}`;
+  const br = `${RIDGE_X},${FACE_HEIGHT}`;
   const bl = `${RIDGE_X - LEFT_FACE_WIDTH - bottomSkew},${FACE_HEIGHT}`;
   return `${tl} ${tr} ${br} ${bl}`;
 }
 
-/** Right face outline (parallelogram) — meets ridge at top, splays at bottom */
 function rightFaceOutline(): string {
   const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
   const tl = `${RIDGE_X},0`;
   const tr = `${RIDGE_X + RIGHT_FACE_WIDTH},0`;
   const br = `${RIDGE_X + RIGHT_FACE_WIDTH + bottomSkew},${FACE_HEIGHT}`;
-  const bl = `${RIDGE_X + bottomSkew},${FACE_HEIGHT}`;
+  const bl = `${RIDGE_X},${FACE_HEIGHT}`;
   return `${tl} ${tr} ${br} ${bl}`;
 }
 
@@ -122,7 +129,6 @@ export function CornerView({ stickers, size = 200 }: CornerViewProps) {
       role="img"
       aria-label="Cube corner view"
     >
-      {/* Face outlines (dark background) */}
       <polygon
         points={leftFaceOutline()}
         fill="#1a1a1a"
@@ -136,7 +142,6 @@ export function CornerView({ stickers, size = 200 }: CornerViewProps) {
         strokeWidth="1"
       />
 
-      {/* Left face stickers (indices 0-2), arranged left to right */}
       {[0, 1, 2].map((col) => (
         <polygon
           key={`left-${col}`}
@@ -147,7 +152,6 @@ export function CornerView({ stickers, size = 200 }: CornerViewProps) {
         />
       ))}
 
-      {/* Right face stickers (indices 3-5), arranged left to right */}
       {[0, 1, 2].map((col) => (
         <polygon
           key={`right-${col}`}
@@ -158,11 +162,10 @@ export function CornerView({ stickers, size = 200 }: CornerViewProps) {
         />
       ))}
 
-      {/* Ridge line (center dividing edge) */}
       <line
         x1={RIDGE_X}
         y1={0}
-        x2={RIDGE_X + bottomSkew}
+        x2={RIDGE_X}
         y2={FACE_HEIGHT}
         stroke="#555"
         strokeWidth="1.5"
