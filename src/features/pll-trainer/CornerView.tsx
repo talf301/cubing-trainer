@@ -3,83 +3,86 @@ import { type Color, COLOR_HEX } from "@/core/pll-types";
 /**
  * CornerView — SVG rendering of a cube corner with 25° skew, front-biased.
  *
- * Shows two faces of a cube corner: a narrower left/side face and a wider
- * right/front face. Each face has 3 stickers arranged vertically (top row
- * of that face's column visible from the corner angle).
+ * Shows two faces of a cube corner. Each face has 3 stickers arranged
+ * horizontally (left corner, edge, right corner of the top row).
+ * Faces meet at the top ridge and splay outward at the bottom (Λ shape).
  *
  * Props:
  *   stickers: Color[6]
- *     - indices 0-2: left/side face (narrower), top to bottom
- *     - indices 3-5: right/front face (wider), top to bottom
- *   size?: number — overall width in px (default 120)
+ *     - indices 0-2: left/side face (narrower), left to right
+ *     - indices 3-5: right/front face (wider), left to right
+ *   size?: number — overall width in px (default 200)
  */
 
 export interface CornerViewProps {
   /** 6 sticker colors: [left0, left1, left2, right0, right1, right2] */
   stickers: readonly Color[];
-  /** Overall width in px (default 120) */
+  /** Overall width in px (default 200) */
   size?: number;
 }
-
-// Layout constants (in SVG coordinate space)
-const SVG_WIDTH = 120;
-const SVG_HEIGHT = 100;
 
 // Skew angle in degrees — front-biased means the right face is wider
 const SKEW_DEG = 25;
 const SKEW_RAD = (SKEW_DEG * Math.PI) / 180;
 
 // Face dimensions
-const LEFT_FACE_WIDTH = 30; // narrower side face
-const RIGHT_FACE_WIDTH = 50; // wider front face
-const FACE_HEIGHT = 80;
-const STICKER_GAP = 2;
-
-// Sticker dimensions
-const LEFT_STICKER_W = LEFT_FACE_WIDTH - STICKER_GAP * 2;
-const RIGHT_STICKER_W = RIGHT_FACE_WIDTH - STICKER_GAP * 2;
-const STICKER_H = (FACE_HEIGHT - STICKER_GAP * 4) / 3;
+const LEFT_FACE_WIDTH = 36; // narrower side face
+const RIGHT_FACE_WIDTH = 54; // wider front face
+const FACE_HEIGHT = 22; // height of the sticker strip (single row)
+const GAP = 2; // gap between stickers and edges
 
 // The dividing ridge (where the two faces meet) x position
-const RIDGE_X = LEFT_FACE_WIDTH + 5;
+const RIDGE_X = LEFT_FACE_WIDTH + 4;
 
 /**
  * Compute the 4 corner points of a parallelogram sticker on the left face.
- * Left face: top meets the ridge, bottom splays outward (Λ shape).
+ * col 0 = leftmost (furthest from ridge), col 2 = rightmost (nearest ridge).
  */
-function leftStickerPoints(row: number): string {
-  const y0 = STICKER_GAP + row * (STICKER_H + STICKER_GAP);
-  const y1 = y0 + STICKER_H;
+function leftStickerPoints(col: number): string {
+  const faceWidth = LEFT_FACE_WIDTH;
+  const stickerW = (faceWidth - GAP * 4) / 3;
+  const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
 
-  // Horizontal offset due to skew: lower rows shift more to the left
-  const skewOffset0 = y0 * Math.tan(SKEW_RAD);
-  const skewOffset1 = y1 * Math.tan(SKEW_RAD);
+  // x positions at top (y=0): face goes from RIDGE_X - faceWidth to RIDGE_X
+  // x positions at bottom (y=FACE_HEIGHT): shifted left by bottomSkew
+  const topLeft = RIDGE_X - faceWidth;
+  const botLeft = RIDGE_X - faceWidth - bottomSkew;
 
-  const x0Left = RIDGE_X - LEFT_FACE_WIDTH - skewOffset0 + STICKER_GAP;
-  const x0Right = RIDGE_X - skewOffset0 - STICKER_GAP;
-  const x1Left = RIDGE_X - LEFT_FACE_WIDTH - skewOffset1 + STICKER_GAP;
-  const x1Right = RIDGE_X - skewOffset1 - STICKER_GAP;
+  // Each column: interpolate between top and bottom edges
+  const x0Top = topLeft + GAP + col * (stickerW + GAP);
+  const x1Top = x0Top + stickerW;
+  const x0Bot = botLeft + GAP + col * (stickerW + GAP);
+  const x1Bot = x0Bot + stickerW;
 
-  return `${x0Left},${y0} ${x0Right},${y0} ${x1Right},${y1} ${x1Left},${y1}`;
+  const y0 = GAP;
+  const y1 = FACE_HEIGHT - GAP;
+
+  return `${x0Top},${y0} ${x1Top},${y0} ${x1Bot},${y1} ${x0Bot},${y1}`;
 }
 
 /**
  * Compute the 4 corner points of a parallelogram sticker on the right face.
- * Right face: top meets the ridge, bottom splays outward (Λ shape).
+ * col 0 = leftmost (nearest ridge), col 2 = rightmost (furthest from ridge).
  */
-function rightStickerPoints(row: number): string {
-  const y0 = STICKER_GAP + row * (STICKER_H + STICKER_GAP);
-  const y1 = y0 + STICKER_H;
+function rightStickerPoints(col: number): string {
+  const faceWidth = RIGHT_FACE_WIDTH;
+  const stickerW = (faceWidth - GAP * 4) / 3;
+  const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
 
-  const skewOffset0 = y0 * Math.tan(SKEW_RAD);
-  const skewOffset1 = y1 * Math.tan(SKEW_RAD);
+  // x positions at top (y=0): face goes from RIDGE_X to RIDGE_X + faceWidth
+  // x positions at bottom (y=FACE_HEIGHT): shifted right by bottomSkew
+  const topLeft = RIDGE_X;
+  const botLeft = RIDGE_X + bottomSkew;
 
-  const x0Left = RIDGE_X + skewOffset0 + STICKER_GAP;
-  const x0Right = RIDGE_X + RIGHT_FACE_WIDTH + skewOffset0 - STICKER_GAP;
-  const x1Left = RIDGE_X + skewOffset1 + STICKER_GAP;
-  const x1Right = RIDGE_X + RIGHT_FACE_WIDTH + skewOffset1 - STICKER_GAP;
+  const x0Top = topLeft + GAP + col * (stickerW + GAP);
+  const x1Top = x0Top + stickerW;
+  const x0Bot = botLeft + GAP + col * (stickerW + GAP);
+  const x1Bot = x0Bot + stickerW;
 
-  return `${x0Left},${y0} ${x0Right},${y0} ${x1Right},${y1} ${x1Left},${y1}`;
+  const y0 = GAP;
+  const y1 = FACE_HEIGHT - GAP;
+
+  return `${x0Top},${y0} ${x1Top},${y0} ${x1Bot},${y1} ${x0Bot},${y1}`;
 }
 
 /** Left face outline (parallelogram) — meets ridge at top, splays at bottom */
@@ -102,15 +105,13 @@ function rightFaceOutline(): string {
   return `${tl} ${tr} ${br} ${bl}`;
 }
 
-export function CornerView({ stickers, size = 120 }: CornerViewProps) {
-  // Compute actual viewBox bounds to center the content
+export function CornerView({ stickers, size = 200 }: CornerViewProps) {
   const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
   const minX = RIDGE_X - LEFT_FACE_WIDTH - bottomSkew - 1;
   const maxX = RIDGE_X + RIGHT_FACE_WIDTH + bottomSkew + 1;
   const viewBoxWidth = maxX - minX;
   const viewBoxHeight = FACE_HEIGHT + 2;
 
-  const scale = size / SVG_WIDTH;
   const svgHeight = (viewBoxHeight / viewBoxWidth) * size;
 
   return (
@@ -135,23 +136,23 @@ export function CornerView({ stickers, size = 120 }: CornerViewProps) {
         strokeWidth="1"
       />
 
-      {/* Left face stickers (indices 0-2) */}
-      {[0, 1, 2].map((row) => (
+      {/* Left face stickers (indices 0-2), arranged left to right */}
+      {[0, 1, 2].map((col) => (
         <polygon
-          key={`left-${row}`}
-          points={leftStickerPoints(row)}
-          fill={COLOR_HEX[stickers[row]]}
+          key={`left-${col}`}
+          points={leftStickerPoints(col)}
+          fill={COLOR_HEX[stickers[col]]}
           stroke="#111"
           strokeWidth="0.5"
         />
       ))}
 
-      {/* Right face stickers (indices 3-5) */}
-      {[0, 1, 2].map((row) => (
+      {/* Right face stickers (indices 3-5), arranged left to right */}
+      {[0, 1, 2].map((col) => (
         <polygon
-          key={`right-${row}`}
-          points={rightStickerPoints(row)}
-          fill={COLOR_HEX[stickers[3 + row]]}
+          key={`right-${col}`}
+          points={rightStickerPoints(col)}
+          fill={COLOR_HEX[stickers[3 + col]]}
           stroke="#111"
           strokeWidth="0.5"
         />
