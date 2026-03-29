@@ -28,7 +28,7 @@ const SKEW_RAD = (SKEW_DEG * Math.PI) / 180;
 // Face dimensions
 const LEFT_FACE_WIDTH = 36; // narrower side face
 const RIGHT_FACE_WIDTH = 54; // wider front face
-const FACE_HEIGHT = 22; // height of the sticker strip (single row)
+const FACE_HEIGHT = 44; // height of the sticker strip (single row)
 const GAP = 2; // gap between stickers and edges
 
 // The dividing ridge (where the two faces meet) x position
