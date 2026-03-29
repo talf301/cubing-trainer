@@ -45,15 +45,15 @@ const RIDGE_X = LEFT_FACE_WIDTH + 5;
 
 /**
  * Compute the 4 corner points of a parallelogram sticker on the left face.
- * Left face skews leftward (top edge shifts left relative to bottom).
+ * Left face: top meets the ridge, bottom splays outward (Λ shape).
  */
 function leftStickerPoints(row: number): string {
   const y0 = STICKER_GAP + row * (STICKER_H + STICKER_GAP);
   const y1 = y0 + STICKER_H;
 
-  // Horizontal offset due to skew: higher rows shift more to the left
-  const skewOffset0 = (FACE_HEIGHT - y0) * Math.tan(SKEW_RAD);
-  const skewOffset1 = (FACE_HEIGHT - y1) * Math.tan(SKEW_RAD);
+  // Horizontal offset due to skew: lower rows shift more to the left
+  const skewOffset0 = y0 * Math.tan(SKEW_RAD);
+  const skewOffset1 = y1 * Math.tan(SKEW_RAD);
 
   const x0Left = RIDGE_X - LEFT_FACE_WIDTH - skewOffset0 + STICKER_GAP;
   const x0Right = RIDGE_X - skewOffset0 - STICKER_GAP;
@@ -65,14 +65,14 @@ function leftStickerPoints(row: number): string {
 
 /**
  * Compute the 4 corner points of a parallelogram sticker on the right face.
- * Right face skews rightward (top edge shifts right relative to bottom).
+ * Right face: top meets the ridge, bottom splays outward (Λ shape).
  */
 function rightStickerPoints(row: number): string {
   const y0 = STICKER_GAP + row * (STICKER_H + STICKER_GAP);
   const y1 = y0 + STICKER_H;
 
-  const skewOffset0 = (FACE_HEIGHT - y0) * Math.tan(SKEW_RAD);
-  const skewOffset1 = (FACE_HEIGHT - y1) * Math.tan(SKEW_RAD);
+  const skewOffset0 = y0 * Math.tan(SKEW_RAD);
+  const skewOffset1 = y1 * Math.tan(SKEW_RAD);
 
   const x0Left = RIDGE_X + skewOffset0 + STICKER_GAP;
   const x0Right = RIDGE_X + RIGHT_FACE_WIDTH + skewOffset0 - STICKER_GAP;
@@ -82,31 +82,31 @@ function rightStickerPoints(row: number): string {
   return `${x0Left},${y0} ${x0Right},${y0} ${x1Right},${y1} ${x1Left},${y1}`;
 }
 
-/** Left face outline (parallelogram) */
+/** Left face outline (parallelogram) — meets ridge at top, splays at bottom */
 function leftFaceOutline(): string {
-  const topSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
-  const tl = `${RIDGE_X - LEFT_FACE_WIDTH - topSkew},0`;
-  const tr = `${RIDGE_X - topSkew},0`;
-  const br = `${RIDGE_X},${FACE_HEIGHT}`;
-  const bl = `${RIDGE_X - LEFT_FACE_WIDTH},${FACE_HEIGHT}`;
+  const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
+  const tl = `${RIDGE_X - LEFT_FACE_WIDTH},0`;
+  const tr = `${RIDGE_X},0`;
+  const br = `${RIDGE_X - bottomSkew},${FACE_HEIGHT}`;
+  const bl = `${RIDGE_X - LEFT_FACE_WIDTH - bottomSkew},${FACE_HEIGHT}`;
   return `${tl} ${tr} ${br} ${bl}`;
 }
 
-/** Right face outline (parallelogram) */
+/** Right face outline (parallelogram) — meets ridge at top, splays at bottom */
 function rightFaceOutline(): string {
-  const topSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
-  const tl = `${RIDGE_X + topSkew},0`;
-  const tr = `${RIDGE_X + RIGHT_FACE_WIDTH + topSkew},0`;
-  const br = `${RIDGE_X + RIGHT_FACE_WIDTH},${FACE_HEIGHT}`;
-  const bl = `${RIDGE_X},${FACE_HEIGHT}`;
+  const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
+  const tl = `${RIDGE_X},0`;
+  const tr = `${RIDGE_X + RIGHT_FACE_WIDTH},0`;
+  const br = `${RIDGE_X + RIGHT_FACE_WIDTH + bottomSkew},${FACE_HEIGHT}`;
+  const bl = `${RIDGE_X + bottomSkew},${FACE_HEIGHT}`;
   return `${tl} ${tr} ${br} ${bl}`;
 }
 
 export function CornerView({ stickers, size = 120 }: CornerViewProps) {
   // Compute actual viewBox bounds to center the content
-  const topSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
-  const minX = RIDGE_X - LEFT_FACE_WIDTH - topSkew - 1;
-  const maxX = RIDGE_X + RIGHT_FACE_WIDTH + topSkew + 1;
+  const bottomSkew = FACE_HEIGHT * Math.tan(SKEW_RAD);
+  const minX = RIDGE_X - LEFT_FACE_WIDTH - bottomSkew - 1;
+  const maxX = RIDGE_X + RIGHT_FACE_WIDTH + bottomSkew + 1;
   const viewBoxWidth = maxX - minX;
   const viewBoxHeight = FACE_HEIGHT + 2;
 
@@ -159,9 +159,9 @@ export function CornerView({ stickers, size = 120 }: CornerViewProps) {
 
       {/* Ridge line (center dividing edge) */}
       <line
-        x1={RIDGE_X - topSkew}
+        x1={RIDGE_X}
         y1={0}
-        x2={RIDGE_X}
+        x2={RIDGE_X + bottomSkew}
         y2={FACE_HEIGHT}
         stroke="#555"
         strokeWidth="1.5"

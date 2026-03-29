@@ -138,8 +138,9 @@ export class PllStickerCache {
   }
 
   /**
-   * Trace the CW cycle of U-layer positions after a U move.
-   * Starting from an arbitrary position, follows where each piece went.
+   * Trace the cycle of U-layer positions after a U move, following
+   * the source chain: for each position, find where its piece came from.
+   * This produces the order matching SIDE_FACES = [F, R, B, L].
    */
   private findCWCycle(
     positions: number[],
@@ -148,8 +149,8 @@ export class PllStickerCache {
     const cycle: number[] = [positions[0]];
     let current = positions[0];
     for (let step = 0; step < 3; step++) {
-      // Find position where the piece from 'current' ended up
-      const next = positions.find((p) => piecesAfterU[p] === current)!;
+      // The piece at position 'current' came from position piecesAfterU[current]
+      const next = piecesAfterU[current] as number;
       cycle.push(next);
       current = next;
     }

@@ -132,11 +132,11 @@ describe("PllStickerCache", () => {
       const aufU = await cache.getOverheadStickers("H", "U");
 
       // H perm is symmetric: each face has [X, Y, X] pattern.
-      // After U, the pattern from front moves to right, right→back, etc.
-      expect(aufU.right).toEqual(noAuf.front);
-      expect(aufU.back).toEqual(noAuf.right);
-      expect(aufU.left).toEqual(noAuf.back);
-      expect(aufU.front).toEqual(noAuf.left);
+      // After U CW, the pattern shifts: R→F, F→L, L→B, B→R.
+      expect(aufU.front).toEqual(noAuf.right);
+      expect(aufU.left).toEqual(noAuf.front);
+      expect(aufU.back).toEqual(noAuf.left);
+      expect(aufU.right).toEqual(noAuf.back);
     });
 
     it("U2 AUF applied twice is same as no AUF for symmetric cases", async () => {
