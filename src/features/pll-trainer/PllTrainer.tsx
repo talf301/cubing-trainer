@@ -2,6 +2,8 @@
 import type { CubeConnection } from "@/core/cube-connection";
 import { useCubeConnection } from "@/features/bluetooth/use-cube-connection";
 import { usePllTrainer } from "./usePllTrainer";
+import { usePllRecognitionTrainer } from "./usePllRecognitionTrainer";
+import { PllRecognizeView } from "./PllRecognizeView";
 import { KnownPllsModal } from "./KnownPllsModal";
 import { PLL_CASES } from "@/core/pll-cases";
 
@@ -22,6 +24,7 @@ function formatTime(ms: number): string {
 export function PllTrainer({ connection }: PllTrainerProps) {
   const { status, connect } = useCubeConnection(connection);
   const trainer = usePllTrainer(connection);
+  const recognitionTrainer = usePllRecognitionTrainer();
 
   const isConnected = status === "connected";
 
@@ -52,6 +55,11 @@ export function PllTrainer({ connection }: PllTrainerProps) {
           active={trainer.tab === "learn"}
           onClick={() => trainer.setTab("learn")}
         />
+        <TabButton
+          label="Recognize"
+          active={trainer.tab === "recognize"}
+          onClick={() => trainer.setTab("recognize")}
+        />
         <button
           onClick={() => trainer.setShowKnownModal(true)}
           className="ml-auto text-gray-400 hover:text-white"
@@ -72,6 +80,11 @@ export function PllTrainer({ connection }: PllTrainerProps) {
       {/* Learn mode */}
       {trainer.tab === "learn" && (
         <LearnView trainer={trainer} />
+      )}
+
+      {/* Recognize mode */}
+      {trainer.tab === "recognize" && (
+        <PllRecognizeView trainer={recognitionTrainer} />
       )}
 
       {/* Known PLLs modal */}
