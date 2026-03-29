@@ -11,7 +11,7 @@ import { PllStatsStore, type PllCaseStats } from "@/lib/pll-stats-store";
 import { PllCaseSelector, type PllCaseWeight } from "@/core/pll-case-selector";
 import { PLL_CASES } from "@/core/pll-cases";
 
-export type PllTab = "drill" | "learn";
+export type PllTab = "drill" | "learn" | "recognize";
 
 const statsStore = new PllStatsStore();
 const caseSelector = new PllCaseSelector();
