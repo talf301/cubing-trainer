@@ -3,14 +3,15 @@ import { type Color, COLOR_HEX } from "@/core/pll-types";
 /**
  * CornerView — SVG rendering of a cube corner from above.
  *
- * Shows the U face as a triangle at the top (solid color), with two
- * side face sticker strips below forming a tent/A-frame shape.
- * The right (front) face is wider for a front-biased perspective.
+ * Three triangular faces radiate from the corner apex in a Y-shape:
+ *   - U face (top): wide flat triangle between left and right spokes
+ *   - Left side face: triangle between left spoke and ridge (down spoke)
+ *   - Right/front face: triangle between ridge and right spoke (wider, front-biased)
  *
  * Props:
  *   stickers: Color[6]
- *     - indices 0-2: left/side face, left to right
- *     - indices 3-5: right/front face, left to right
+ *     - indices 0-2: left/side face, outer to ridge
+ *     - indices 3-5: right/front face, ridge to outer
  *   topColor?: Color — U face color (default "white")
  *   size?: number — overall width in px (default 240)
  */
@@ -21,82 +22,23 @@ export interface CornerViewProps {
   size?: number;
 }
 
-// Layout constants
-const RIDGE_X = 95; // x of the ridge / corner vertex
-const CORNER_Y = 6; // y of corner vertex (topmost point)
-const STRIP_TOP_Y = 30; // where side face strips begin
-const STRIP_BOT_Y = 70; // where side face strips end
-const LEFT_TOP_W = 48; // left face width at strip top
-const RIGHT_TOP_W = 68; // right face width at strip top (front-biased)
-const SPLAY = 0.3; // outward splay per pixel of strip height
-const GAP = 1.5;
+// Y-spoke geometry: three faces meet at the corner apex
+const APEX = { x: 100, y: 5 };
+const L = { x: 15, y: 50 }; // left spoke endpoint
+const R = { x: 195, y: 50 }; // right spoke endpoint (front-biased, wider)
+const D = { x: 100, y: 98 }; // ridge bottom (down spoke)
 
-// Derived
-const STRIP_H = STRIP_BOT_Y - STRIP_TOP_Y;
-const LEFT_BOT_W = LEFT_TOP_W + STRIP_H * SPLAY;
-const RIGHT_BOT_W = RIGHT_TOP_W + STRIP_H * SPLAY;
+const STROKE_W = 1.5;
+const STROKE_COLOR = "#1a1a1a";
 
-// Key points
-const TOP_LEFT = { x: RIDGE_X - LEFT_TOP_W, y: STRIP_TOP_Y };
-const TOP_RIGHT = { x: RIDGE_X + RIGHT_TOP_W, y: STRIP_TOP_Y };
-const BOT_LEFT = { x: RIDGE_X - LEFT_BOT_W, y: STRIP_BOT_Y };
-const BOT_RIGHT = { x: RIDGE_X + RIGHT_BOT_W, y: STRIP_BOT_Y };
+type Pt = { x: number; y: number };
 
-function topFacePoints(): string {
-  return `${RIDGE_X},${CORNER_Y} ${TOP_LEFT.x},${TOP_LEFT.y} ${TOP_RIGHT.x},${TOP_RIGHT.y}`;
+function lerp(a: Pt, b: Pt, t: number): Pt {
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 }
 
-function leftFaceOutline(): string {
-  return `${TOP_LEFT.x},${TOP_LEFT.y} ${RIDGE_X},${STRIP_TOP_Y} ${RIDGE_X},${STRIP_BOT_Y} ${BOT_LEFT.x},${BOT_LEFT.y}`;
-}
-
-function rightFaceOutline(): string {
-  return `${RIDGE_X},${STRIP_TOP_Y} ${TOP_RIGHT.x},${TOP_RIGHT.y} ${BOT_RIGHT.x},${BOT_RIGHT.y} ${RIDGE_X},${STRIP_BOT_Y}`;
-}
-
-/**
- * Compute sticker quadrilateral within the left face strip.
- * col 0 = leftmost (outer), col 2 = rightmost (near ridge).
- */
-function leftStickerPoints(col: number): string {
-  const topW = LEFT_TOP_W;
-  const botW = LEFT_BOT_W;
-  const topSW = (topW - GAP * 4) / 3;
-  const botSW = (botW - GAP * 4) / 3;
-
-  const y0 = STRIP_TOP_Y + GAP;
-  const y1 = STRIP_BOT_Y - GAP;
-
-  const topOuter = RIDGE_X - topW;
-  const botOuter = RIDGE_X - botW;
-
-  const x0TopL = topOuter + GAP + col * (topSW + GAP);
-  const x0TopR = x0TopL + topSW;
-  const x0BotL = botOuter + GAP + col * (botSW + GAP);
-  const x0BotR = x0BotL + botSW;
-
-  return `${x0TopL},${y0} ${x0TopR},${y0} ${x0BotR},${y1} ${x0BotL},${y1}`;
-}
-
-/**
- * Compute sticker quadrilateral within the right face strip.
- * col 0 = leftmost (near ridge), col 2 = rightmost (outer).
- */
-function rightStickerPoints(col: number): string {
-  const topW = RIGHT_TOP_W;
-  const botW = RIGHT_BOT_W;
-  const topSW = (topW - GAP * 4) / 3;
-  const botSW = (botW - GAP * 4) / 3;
-
-  const y0 = STRIP_TOP_Y + GAP;
-  const y1 = STRIP_BOT_Y - GAP;
-
-  const x0TopL = RIDGE_X + GAP + col * (topSW + GAP);
-  const x0TopR = x0TopL + topSW;
-  const x0BotL = RIDGE_X + GAP + col * (botSW + GAP);
-  const x0BotR = x0BotL + botSW;
-
-  return `${x0TopL},${y0} ${x0TopR},${y0} ${x0BotR},${y1} ${x0BotL},${y1}`;
+function pts(...points: Pt[]): string {
+  return points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
 }
 
 export function CornerView({
@@ -104,73 +46,54 @@ export function CornerView({
   topColor = "white",
   size = 240,
 }: CornerViewProps) {
-  const minX = BOT_LEFT.x - 2;
-  const maxX = BOT_RIGHT.x + 2;
-  const viewBoxWidth = maxX - minX;
-  const viewBoxHeight = STRIP_BOT_Y - CORNER_Y + 4;
-  const svgHeight = (viewBoxHeight / viewBoxWidth) * size;
+  const PAD = 2;
+  const minX = L.x - PAD;
+  const maxX = R.x + PAD;
+  const minY = APEX.y - PAD;
+  const maxY = D.y + PAD;
+  const vbW = maxX - minX;
+  const vbH = maxY - minY;
 
   return (
     <svg
       width={size}
-      height={svgHeight}
-      viewBox={`${minX} ${CORNER_Y - 2} ${viewBoxWidth} ${viewBoxHeight}`}
+      height={(vbH / vbW) * size}
+      viewBox={`${minX} ${minY} ${vbW} ${vbH}`}
       role="img"
       aria-label="Cube corner view"
     >
-      {/* Top (U) face — solid color triangle */}
+      {/* U face — solid color triangle */}
       <polygon
-        points={topFacePoints()}
+        points={pts(APEX, L, R)}
         fill={COLOR_HEX[topColor]}
-        stroke="#333"
-        strokeWidth="0.8"
+        stroke={STROKE_COLOR}
+        strokeWidth={STROKE_W}
+        strokeLinejoin="round"
       />
 
-      {/* Side face outlines */}
-      <polygon
-        points={leftFaceOutline()}
-        fill="#1a1a1a"
-        stroke="#333"
-        strokeWidth="0.8"
-      />
-      <polygon
-        points={rightFaceOutline()}
-        fill="#1a1a1a"
-        stroke="#333"
-        strokeWidth="0.8"
-      />
-
-      {/* Left face stickers (indices 0-2) */}
+      {/* Left face stickers (indices 0-2, outer→ridge) */}
       {[0, 1, 2].map((col) => (
         <polygon
-          key={`left-${col}`}
-          points={leftStickerPoints(col)}
+          key={`l${col}`}
+          points={pts(APEX, lerp(L, D, col / 3), lerp(L, D, (col + 1) / 3))}
           fill={COLOR_HEX[stickers[col]]}
-          stroke="#111"
-          strokeWidth="0.5"
+          stroke={STROKE_COLOR}
+          strokeWidth={STROKE_W}
+          strokeLinejoin="round"
         />
       ))}
 
-      {/* Right face stickers (indices 3-5) */}
+      {/* Right face stickers (indices 3-5, ridge→outer) */}
       {[0, 1, 2].map((col) => (
         <polygon
-          key={`right-${col}`}
-          points={rightStickerPoints(col)}
+          key={`r${col}`}
+          points={pts(APEX, lerp(D, R, col / 3), lerp(D, R, (col + 1) / 3))}
           fill={COLOR_HEX[stickers[3 + col]]}
-          stroke="#111"
-          strokeWidth="0.5"
+          stroke={STROKE_COLOR}
+          strokeWidth={STROKE_W}
+          strokeLinejoin="round"
         />
       ))}
-
-      {/* Ridge line */}
-      <line
-        x1={RIDGE_X}
-        y1={STRIP_TOP_Y}
-        x2={RIDGE_X}
-        y2={STRIP_BOT_Y}
-        stroke="#555"
-        strokeWidth="1.2"
-      />
     </svg>
   );
 }
