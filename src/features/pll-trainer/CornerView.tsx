@@ -3,13 +3,14 @@ import { type Color, COLOR_HEX } from "@/core/pll-types";
 /**
  * CornerView — SVG rendering of a cube corner from above.
  *
- * Y-spoke layout: three faces radiate from the corner apex.
+ * Y-spoke layout with parallelogram stickers:
  *   - U face (top): wide flat triangle between left and right spokes
- *   - Left side face: trapezoidal sticker band between left spoke and ridge
- *   - Right/front face: trapezoidal sticker band between ridge and right spoke
+ *   - Left side face: 3 parallelogram stickers along the APEX→L edge
+ *   - Right/front face: 3 parallelogram stickers along the APEX→R edge
  *
- * Stickers are quads (trapezoids) within each face band, not pie-slice
- * triangles, so they remain readable even near the corner apex.
+ * Each sticker is a parallelogram: positioned along the face's top edge
+ * and offset downward by a uniform vector (like real cube stickers in
+ * isometric projection).
  *
  * Props:
  *   stickers: Color[6]
@@ -33,9 +34,12 @@ const L: Pt = { x: 18, y: 48 }; // left spoke endpoint
 const R: Pt = { x: 192, y: 48 }; // right spoke endpoint (front-biased)
 const D: Pt = { x: 100, y: 95 }; // ridge bottom (down spoke)
 
-// Sticker band position along spokes (fraction from apex)
-const T_START = 0.3; // leave dark gap near apex for corner plastic
-const T_END = 0.92;
+// Sticker depth: fraction of APEX→D vector
+const DEPTH = 0.25;
+const DOWN: Pt = {
+  x: (D.x - APEX.x) * DEPTH,
+  y: (D.y - APEX.y) * DEPTH,
+};
 
 const STROKE_W = 1.5;
 const STROKE = "#1a1a1a";
@@ -44,23 +48,23 @@ function lerp(a: Pt, b: Pt, t: number): Pt {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 }
 
+function offset(p: Pt): Pt {
+  return { x: p.x + DOWN.x, y: p.y + DOWN.y };
+}
+
 function pts(...pp: Pt[]): string {
   return pp.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
 }
 
-/** Compute a sticker quadrilateral within a face's trapezoidal band. */
-function stickerQuad(endA: Pt, endB: Pt, col: number): string {
-  const tA = lerp(APEX, endA, T_START);
-  const tB = lerp(APEX, endB, T_START);
-  const bA = lerp(APEX, endA, T_END);
-  const bB = lerp(APEX, endB, T_END);
+/** Parallelogram sticker along a face's top edge, offset downward. */
+function stickerPgram(from: Pt, to: Pt, col: number): string {
+  const GAP = 0.02;
+  const f0 = GAP + (col * (1 - 2 * GAP)) / 3;
+  const f1 = GAP + ((col + 1) * (1 - 2 * GAP)) / 3;
 
-  return pts(
-    lerp(tA, tB, col / 3),
-    lerp(tA, tB, (col + 1) / 3),
-    lerp(bA, bB, (col + 1) / 3),
-    lerp(bA, bB, col / 3),
-  );
+  const tl = lerp(from, to, f0);
+  const tr = lerp(from, to, f1);
+  return pts(tl, tr, offset(tr), offset(tl));
 }
 
 export function CornerView({
@@ -84,9 +88,9 @@ export function CornerView({
       role="img"
       aria-label="Cube corner view"
     >
-      {/* Dark background — black plastic of the corner piece */}
-      <polygon points={pts(APEX, L, D)} fill="#1a1a1a" />
-      <polygon points={pts(APEX, D, R)} fill="#1a1a1a" />
+      {/* Dark background — black plastic */}
+      <polygon points={pts(L, offset(L), D, APEX)} fill="#1a1a1a" />
+      <polygon points={pts(APEX, D, offset(R), R)} fill="#1a1a1a" />
 
       {/* U face — solid color triangle */}
       <polygon
@@ -97,11 +101,11 @@ export function CornerView({
         strokeLinejoin="round"
       />
 
-      {/* Left face stickers (indices 0-2, outer→ridge) */}
+      {/* Left face stickers (0=outer near L, 2=inner near APEX/ridge) */}
       {[0, 1, 2].map((col) => (
         <polygon
           key={`l${col}`}
-          points={stickerQuad(L, D, col)}
+          points={stickerPgram(L, APEX, col)}
           fill={COLOR_HEX[stickers[col]]}
           stroke={STROKE}
           strokeWidth={STROKE_W}
@@ -109,11 +113,11 @@ export function CornerView({
         />
       ))}
 
-      {/* Right face stickers (indices 3-5, ridge→outer) */}
+      {/* Right face stickers (3=inner near APEX/ridge, 5=outer near R) */}
       {[0, 1, 2].map((col) => (
         <polygon
           key={`r${col}`}
-          points={stickerQuad(D, R, col)}
+          points={stickerPgram(APEX, R, col)}
           fill={COLOR_HEX[stickers[3 + col]]}
           stroke={STROKE}
           strokeWidth={STROKE_W}
