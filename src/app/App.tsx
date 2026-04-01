@@ -1,8 +1,11 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./Layout";
 import { Timer, History, Training, TrainingCross, PllTrainerRoute, Settings, Debug } from "./routes";
+import { useWakeLock } from "./useWakeLock";
 
 export default function App() {
+  useWakeLock();
+
   return (
     <BrowserRouter basename="/cubing-trainer">
       <Routes>
