@@ -15,6 +15,11 @@ export function useWakeLock() {
     const isBluefy = /Bluefy/i.test(navigator.userAgent);
     const hasNativeWakeLock = !isBluefy && "wakeLock" in navigator;
 
+    console.log("[WakeLock] UA:", navigator.userAgent);
+    console.log("[WakeLock] isBluefy:", isBluefy);
+    console.log("[WakeLock] navigator.wakeLock exists:", "wakeLock" in navigator);
+    console.log("[WakeLock] path:", hasNativeWakeLock ? "native" : "video-fallback");
+
     // ── Native Wake Lock path ──
     if (hasNativeWakeLock) {
       let lock: WakeLockSentinel | null = null;
@@ -22,8 +27,12 @@ export function useWakeLock() {
       async function acquire() {
         try {
           lock = await navigator.wakeLock.request("screen");
-        } catch {
-          // Permission denied or low battery — nothing we can do.
+          console.log("[WakeLock] native lock acquired, type:", lock.type);
+          lock.addEventListener("release", () => {
+            console.log("[WakeLock] native lock released");
+          });
+        } catch (e) {
+          console.warn("[WakeLock] native lock failed:", e);
         }
       }
 
@@ -81,11 +90,18 @@ export function useWakeLock() {
     function play() {
       const result = video.play();
       if (!result) return; // No promise in non-browser environments
-      result.catch(() => {
+      result.then(() => {
+        console.log("[WakeLock] video playing, paused:", video.paused, "readyState:", video.readyState);
+      }).catch((e) => {
+        console.warn("[WakeLock] video autoplay blocked:", e.message);
         // Autoplay blocked — needs a user gesture first.
         // Listen for the first tap/click and retry.
         function onInteraction() {
-          video.play().catch(() => {});
+          video.play()?.then(() => {
+            console.log("[WakeLock] video playing after interaction, paused:", video.paused);
+          }).catch((e2) => {
+            console.warn("[WakeLock] video play after interaction failed:", e2.message);
+          });
           document.removeEventListener("touchstart", onInteraction);
           document.removeEventListener("click", onInteraction);
         }
