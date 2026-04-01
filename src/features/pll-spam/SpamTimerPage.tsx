@@ -1,4 +1,5 @@
 // src/features/pll-spam/SpamTimerPage.tsx
+import { Link } from "react-router-dom";
 import type { CubeConnection } from "@/core/cube-connection";
 import { useCubeConnection } from "@/features/bluetooth/use-cube-connection";
 import { useSpamTimer } from "./use-spam-timer";
@@ -74,6 +75,13 @@ export function SpamTimerPage({ connection }: SpamTimerPageProps) {
             Execute PLLs on a solved cube — always listening
           </p>
         )}
+      </div>
+
+      {/* Stats link */}
+      <div className="text-center">
+        <Link to="/pll-spam/stats" className="text-blue-400 hover:text-blue-300">
+          View Stats
+        </Link>
       </div>
 
       {/* Scrolling log of recent attempts */}

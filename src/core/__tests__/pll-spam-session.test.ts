@@ -292,4 +292,19 @@ describe("PllSpamSession", () => {
     // Time should start from first move of the T-perm (which breaks F2L)
     expect(completions[0].time).toBeGreaterThan(0);
   });
+
+  it.each(Object.keys(PLL_CASES))("detects %s perm", async (caseName) => {
+    const session = new PllSpamSession();
+    const completions: PllSpamCompletion[] = [];
+    session.addCompletionListener((c) => completions.push(c));
+
+    let state = solved;
+    state = state.applyMove("U");
+    await session.onMove("U", 0, state);
+
+    await applyMoves(session, state, PLL_CASES[caseName].algorithm, 1000, 50);
+
+    expect(completions).toHaveLength(1);
+    expect(completions[0].caseName).toBe(caseName);
+  });
 });

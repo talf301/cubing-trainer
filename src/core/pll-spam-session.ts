@@ -2,6 +2,7 @@ import type { KPattern, KPuzzle } from "cubing/kpuzzle";
 import { cube3x3x3 } from "cubing/puzzles";
 import {
   buildFaceGeometry,
+  isCrossSolved,
   isF2LSolved,
   isOLLSolved,
   type FaceGeometry,
@@ -197,8 +198,12 @@ export class PllSpamSession {
   ): Promise<void> {
     const geometry = await this.ensureInit();
 
-    // Check if F2L is solved and OLL is complete (the detection condition)
-    const f2lSolved = isF2LSolved(stateAfterMove, geometry, CROSS_FACE_IDX);
+    // Check if cross + F2L is solved and OLL is complete (the detection condition).
+    // Cross check is needed because M2 moves (used in H/Z/U perms) swap cross
+    // edges with LL edges without breaking F2L corners/equator or OLL orientation.
+    const crossSolved = isCrossSolved(stateAfterMove, geometry, CROSS_FACE_IDX);
+    const f2lSolved =
+      crossSolved && isF2LSolved(stateAfterMove, geometry, CROSS_FACE_IDX);
     const ollSolved =
       f2lSolved && isOLLSolved(stateAfterMove, geometry, CROSS_FACE_IDX);
 

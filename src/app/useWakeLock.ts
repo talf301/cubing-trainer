@@ -79,7 +79,9 @@ export function useWakeLock() {
     document.body.appendChild(video);
 
     function play() {
-      video.play().catch(() => {
+      const result = video.play();
+      if (!result) return; // No promise in non-browser environments
+      result.catch(() => {
         // Autoplay blocked — needs a user gesture first.
         // Listen for the first tap/click and retry.
         function onInteraction() {

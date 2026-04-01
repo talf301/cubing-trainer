@@ -16,30 +16,14 @@ describe("PllLearnSession", () => {
     });
   });
 
-  describe("rotation handling", () => {
-    it("strips rotation moves from algorithm", () => {
+  describe("algorithm parsing", () => {
+    it("parses face moves from algorithm", () => {
       const session = new PllLearnSession();
-      // Aa perm: "x R' U R' D2 R U' R' D2 R2 x'"
+      // Aa perm: "R' F R' B2 R F' R' B2 R2"
       session.startPractice("Aa");
       expect(session.faceMoves).toEqual([
-        "R'", "U", "R'", "D2", "R", "U'", "R'", "D2", "R2",
+        "R'", "F", "R'", "B2", "R", "F'", "R'", "B2", "R2",
       ]);
-    });
-
-    it("strips y rotations", () => {
-      const session = new PllLearnSession();
-      // V perm: "R' U R' U' y R' F' R2 U' R' U R' F R F"
-      session.startPractice("V");
-      expect(session.faceMoves).not.toContain("y");
-      expect(session.faceMoves[0]).toBe("R'");
-    });
-
-    it("strips x' rotations at end of algorithm", () => {
-      const session = new PllLearnSession();
-      // E perm: "x' R U' R' D R U R' D' R U R' D R U' R' D' x"
-      session.startPractice("E");
-      expect(session.faceMoves).not.toContain("x'");
-      expect(session.faceMoves).not.toContain("x");
     });
   });
 
