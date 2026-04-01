@@ -9,6 +9,7 @@ import { TrainingPage } from "@/features/training/TrainingPage";
 import { CrossTrainer } from "@/features/training/CrossTrainer";
 import { PllTrainer } from "@/features/pll-trainer/PllTrainer";
 import { SpamTimerPage } from "@/features/pll-spam/SpamTimerPage";
+import { SpamStatsPage } from "@/features/pll-spam/SpamStatsPage";
 
 // Shared connection instance — Timer, Debug, and Training all use the same cube
 const sharedConnection = new SmartCubeConnection();
@@ -49,6 +50,10 @@ function PllSpamRoute() {
   return <SpamTimerPage connection={sharedConnection} />;
 }
 
+function PllSpamStatsRoute() {
+  return <SpamStatsPage />;
+}
+
 function Settings() {
   return <h1 className="text-2xl font-bold">Settings</h1>;
 }
@@ -57,4 +62,4 @@ function Debug() {
   return <BluetoothDebug connection={sharedConnection} />;
 }
 
-export { Timer, History, Training, TrainingCross, PllTrainerRoute, PllSpamRoute, Settings, Debug };
+export { Timer, History, Training, TrainingCross, PllTrainerRoute, PllSpamRoute, PllSpamStatsRoute, Settings, Debug };
