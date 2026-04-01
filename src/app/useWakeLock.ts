@@ -147,19 +147,27 @@ export function useWakeLock() {
         setDiagnostics({ status: `video autoplay blocked: ${e.message} — waiting for tap` });
         // Autoplay blocked — needs a user gesture first.
         // Listen for the first tap/click and retry.
-        function onInteraction() {
-          video.play()?.then(() => {
-            setDiagnostics({
-              status: `video playing after tap (paused=${video.paused}, readyState=${video.readyState})`,
+        function onInteraction(ev: Event) {
+          setDiagnostics({ status: `tap detected (${ev.type}), calling video.play()...` });
+          const playResult = video.play();
+          if (!playResult) {
+            setDiagnostics({ status: "video.play() after tap returned undefined" });
+          } else {
+            playResult.then(() => {
+              setDiagnostics({
+                status: `video playing after tap (paused=${video.paused}, readyState=${video.readyState})`,
+              });
+            }).catch((e2) => {
+              setDiagnostics({
+                status: `video play after tap failed: ${e2.message} (readyState=${video.readyState}, networkState=${video.networkState}, error=${video.error?.code})`,
+              });
             });
-          }).catch((e2) => {
-            setDiagnostics({ status: `video play after tap failed: ${e2.message}` });
-          });
+          }
           document.removeEventListener("touchstart", onInteraction);
           document.removeEventListener("click", onInteraction);
         }
-        document.addEventListener("touchstart", onInteraction, { once: true });
-        document.addEventListener("click", onInteraction, { once: true });
+        document.addEventListener("touchstart", onInteraction);
+        document.addEventListener("click", onInteraction);
       });
     }
 
