@@ -12,7 +12,8 @@ import { useEffect } from "react";
  */
 export function useWakeLock() {
   useEffect(() => {
-    const hasNativeWakeLock = "wakeLock" in navigator;
+    const isBluefy = /Bluefy/i.test(navigator.userAgent);
+    const hasNativeWakeLock = !isBluefy && "wakeLock" in navigator;
 
     // ── Native Wake Lock path ──
     if (hasNativeWakeLock) {
