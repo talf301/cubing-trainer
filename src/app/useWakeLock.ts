@@ -98,8 +98,8 @@ export function useWakeLock() {
 
     const video = document.createElement("video");
     video.setAttribute("playsinline", "");
-    video.setAttribute("muted", "");
     video.setAttribute("loop", "");
+    video.muted = true; // Property, not just attribute — iOS checks this for autoplay
     // Must be in the DOM on some browsers, but invisible
     video.style.position = "fixed";
     video.style.top = "-1px";
@@ -107,6 +107,14 @@ export function useWakeLock() {
     video.style.width = "1px";
     video.style.height = "1px";
     video.style.opacity = "0";
+
+    // Listen for load errors
+    video.addEventListener("error", () => {
+      const err = video.error;
+      setDiagnostics({
+        status: `video error: code=${err?.code} message=${err?.message}`,
+      });
+    });
 
     // Prefer webm, fall back to mp4
     const webmSource = document.createElement("source");
@@ -120,6 +128,10 @@ export function useWakeLock() {
     video.appendChild(mp4Source);
 
     document.body.appendChild(video);
+
+    setDiagnostics({
+      status: `video created (readyState=${video.readyState}, networkState=${video.networkState})`,
+    });
 
     function play() {
       const result = video.play();
