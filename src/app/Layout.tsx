@@ -4,6 +4,7 @@ const navItems = [
   { to: "/", label: "Timer" },
   { to: "/history", label: "History" },
   { to: "/training", label: "Training" },
+  { to: "/pll-spam", label: "PLL Spam" },
   { to: "/settings", label: "Settings" },
   { to: "/debug", label: "Debug" },
 ];
