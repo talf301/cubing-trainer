@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { CubeConnection } from "@/core/cube-connection";
 import { useCubeConnection } from "./use-cube-connection";
 import { CubeViewer } from "./CubeViewer";
+import { useWakeLockDiagnostics } from "@/app/useWakeLock";
 
 interface BluetoothDebugProps {
   connection: CubeConnection;
@@ -18,6 +19,7 @@ export function BluetoothDebug({ connection }: BluetoothDebugProps) {
   const { status, moves, battery, error, connect, disconnect, resetState } =
     useCubeConnection(connection);
   const [resetCount, setResetCount] = useState(0);
+  const wakeLockDiag = useWakeLockDiagnostics();
 
   const handleReset = () => {
     resetState();
@@ -65,6 +67,20 @@ export function BluetoothDebug({ connection }: BluetoothDebugProps) {
       {error && (
         <div className="rounded bg-red-900/50 px-4 py-2 text-sm text-red-300">
           Error: {error}
+        </div>
+      )}
+
+      {/* Wake Lock diagnostics */}
+      {wakeLockDiag && (
+        <div>
+          <h2 className="mb-2 text-lg font-semibold">Wake Lock</h2>
+          <div className="space-y-1 rounded bg-gray-800 px-4 py-3 font-mono text-sm">
+            <p>Path: <span className="text-blue-300">{wakeLockDiag.path}</span></p>
+            <p>Status: <span className="text-green-300">{wakeLockDiag.status}</span></p>
+            <p>Bluefy: <span className="text-gray-300">{String(wakeLockDiag.isBluefy)}</span></p>
+            <p>Native API: <span className="text-gray-300">{String(wakeLockDiag.nativeApiExists)}</span></p>
+            <p className="break-all text-xs text-gray-500">UA: {wakeLockDiag.userAgent}</p>
+          </div>
         </div>
       )}
 

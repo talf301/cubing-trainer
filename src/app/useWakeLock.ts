@@ -1,4 +1,33 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+export interface WakeLockDiagnostics {
+  userAgent: string;
+  isBluefy: boolean;
+  nativeApiExists: boolean;
+  path: "native" | "video-fallback";
+  status: string;
+}
+
+// Module-level diagnostics so the debug page can read them
+let currentDiagnostics: WakeLockDiagnostics | null = null;
+const listeners = new Set<() => void>();
+
+function setDiagnostics(update: Partial<WakeLockDiagnostics>) {
+  currentDiagnostics = { ...currentDiagnostics!, ...update };
+  for (const l of listeners) l();
+}
+
+export function useWakeLockDiagnostics(): WakeLockDiagnostics | null {
+  const [diag, setDiag] = useState(currentDiagnostics);
+  useEffect(() => {
+    const listener = () => setDiag({ ...currentDiagnostics! });
+    listeners.add(listener);
+    // Sync in case it was set before mount
+    if (currentDiagnostics) setDiag({ ...currentDiagnostics });
+    return () => { listeners.delete(listener); };
+  }, []);
+  return diag;
+}
 
 /**
  * Keeps the screen awake while the app is visible.
@@ -14,11 +43,16 @@ export function useWakeLock() {
   useEffect(() => {
     const isBluefy = /Bluefy/i.test(navigator.userAgent);
     const hasNativeWakeLock = !isBluefy && "wakeLock" in navigator;
+    const path = hasNativeWakeLock ? "native" : "video-fallback";
 
-    console.log("[WakeLock] UA:", navigator.userAgent);
-    console.log("[WakeLock] isBluefy:", isBluefy);
-    console.log("[WakeLock] navigator.wakeLock exists:", "wakeLock" in navigator);
-    console.log("[WakeLock] path:", hasNativeWakeLock ? "native" : "video-fallback");
+    currentDiagnostics = {
+      userAgent: navigator.userAgent,
+      isBluefy,
+      nativeApiExists: "wakeLock" in navigator,
+      path,
+      status: "initializing",
+    };
+    for (const l of listeners) l();
 
     // ── Native Wake Lock path ──
     if (hasNativeWakeLock) {
@@ -27,12 +61,12 @@ export function useWakeLock() {
       async function acquire() {
         try {
           lock = await navigator.wakeLock.request("screen");
-          console.log("[WakeLock] native lock acquired, type:", lock.type);
+          setDiagnostics({ status: "native lock acquired" });
           lock.addEventListener("release", () => {
-            console.log("[WakeLock] native lock released");
+            setDiagnostics({ status: "native lock released" });
           });
         } catch (e) {
-          console.warn("[WakeLock] native lock failed:", e);
+          setDiagnostics({ status: `native lock failed: ${e}` });
         }
       }
 
@@ -89,18 +123,25 @@ export function useWakeLock() {
 
     function play() {
       const result = video.play();
-      if (!result) return; // No promise in non-browser environments
+      if (!result) {
+        setDiagnostics({ status: "video.play() returned undefined" });
+        return;
+      }
       result.then(() => {
-        console.log("[WakeLock] video playing, paused:", video.paused, "readyState:", video.readyState);
+        setDiagnostics({
+          status: `video playing (paused=${video.paused}, readyState=${video.readyState})`,
+        });
       }).catch((e) => {
-        console.warn("[WakeLock] video autoplay blocked:", e.message);
+        setDiagnostics({ status: `video autoplay blocked: ${e.message} — waiting for tap` });
         // Autoplay blocked — needs a user gesture first.
         // Listen for the first tap/click and retry.
         function onInteraction() {
           video.play()?.then(() => {
-            console.log("[WakeLock] video playing after interaction, paused:", video.paused);
+            setDiagnostics({
+              status: `video playing after tap (paused=${video.paused}, readyState=${video.readyState})`,
+            });
           }).catch((e2) => {
-            console.warn("[WakeLock] video play after interaction failed:", e2.message);
+            setDiagnostics({ status: `video play after tap failed: ${e2.message}` });
           });
           document.removeEventListener("touchstart", onInteraction);
           document.removeEventListener("click", onInteraction);
