@@ -134,25 +134,46 @@ export async function recognizePLL(
   // For other cross faces, the home pieces differ (e.g., U cross → [4,5,6,7] range).
   const homeMap = await getHomePieceMapping(crossFace, geometry);
 
-  for (const [name, caseData] of Object.entries(PLL_CASES)) {
-    for (let r = 0; r < 4; r++) {
-      const rotated =
-        r === 0
-          ? aligned
-          : aligned.applyAlg(
-              r === 1 ? "U" : r === 2 ? "U2" : "U'",
-            );
-      const edges = edgePositions.map(
-        (pos) => homeMap.edges.get(rotated.patternData["EDGES"].pieces[pos])!,
-      );
-      const corners = cornerPositions.map(
-        (pos) => homeMap.corners.get(rotated.patternData["CORNERS"].pieces[pos])!,
-      );
+  // Try 4 AUF rotations × 4 conjugations. Conjugation is needed because
+  // cube rotations (x/y/z) during PLL algorithms cause GAN smart cubes
+  // to track moves in a shifted frame, producing a conjugated permutation.
+  const rotAlgs = ["", "U", "U2", "U'"];
+  for (const aufAlg of rotAlgs) {
+    const rotated =
+      aufAlg === ""
+        ? aligned
+        : aligned.applyAlg(aufAlg);
+    const edges = edgePositions.map(
+      (pos) => homeMap.edges.get(rotated.patternData["EDGES"].pieces[pos])!,
+    );
+    const corners = cornerPositions.map(
+      (pos) => homeMap.corners.get(rotated.patternData["CORNERS"].pieces[pos])!,
+    );
+
+    for (const [name, caseData] of Object.entries(PLL_CASES)) {
+      // Direct match (no conjugation)
       if (arraysEqual(edges, caseData.edges) && arraysEqual(corners, caseData.corners)) {
         return name;
+      }
+      // Try 3 conjugations by U (cyclic shift of positions)
+      for (let c = 1; c < 4; c++) {
+        const conjCorners = conjugateByU(caseData.corners, c);
+        const conjEdges = conjugateByU(caseData.edges, c);
+        if (arraysEqual(edges, conjEdges) && arraysEqual(corners, conjCorners)) {
+          return name;
+        }
       }
     }
   }
 
   return null;
+}
+
+/**
+ * Conjugate a permutation array by U^c (cyclic shift of positions).
+ * If U maps position i → (i+1)%4, then conjugation U^c · P · U^{-c} gives:
+ *   result[i] = (P[(i - c + 4) % 4] + c) % 4
+ */
+function conjugateByU(perm: number[], c: number): number[] {
+  return perm.map((_, i) => (perm[(i - c + 4) % 4] + c) % 4);
 }

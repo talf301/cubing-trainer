@@ -134,46 +134,65 @@ async function recognizeDeltaPLL(
     (p) => homeCorners.get(baseline.patternData["CORNERS"].pieces[p])!,
   );
 
-  // Try 4 AUF rotations on the current state to account for post-AUF
+  // Try 4 AUF rotations on current (post-AUF) × 4 rotations on baseline
+  // (conjugation). Conjugation is needed because cube rotations (x/y/z)
+  // during algorithms cause GAN state tracking to shift the U-layer frame.
+  // A PLL executed after an undetected rotation appears as the same case
+  // but conjugated by U — e.g., Aa cycle (0,2,1) becomes (1,3,2).
   const rotations = ["", "U", "U2", "U'"];
   let firstDelta: { corners: number[]; edges: number[] } | null = null;
 
-  for (const rot of rotations) {
-    const rotCurr = rot ? current.applyAlg(rot) : current;
+  for (const baseRot of rotations) {
+    const rotBase = baseRot ? baseline.applyAlg(baseRot) : baseline;
+    const rotBaseEdgeNorm = baseRot
+      ? edgePositions.map(
+          (p) => homeEdges.get(rotBase.patternData["EDGES"].pieces[p])!,
+        )
+      : baseEdgeNorm;
+    const rotBaseCornerNorm = baseRot
+      ? cornerPositions.map(
+          (p) => homeCorners.get(rotBase.patternData["CORNERS"].pieces[p])!,
+        )
+      : baseCornerNorm;
 
-    const currEdgeNorm = edgePositions.map(
-      (p) => homeEdges.get(rotCurr.patternData["EDGES"].pieces[p])!,
-    );
-    const currCornerNorm = cornerPositions.map(
-      (p) => homeCorners.get(rotCurr.patternData["CORNERS"].pieces[p])!,
-    );
+    for (const currRot of rotations) {
+      const rotCurr = currRot ? current.applyAlg(currRot) : current;
 
-    // Build inverse of current arrangement: currInv[piece] = position
-    const currEdgeInv: number[] = Array(4);
-    currEdgeNorm.forEach((piece, pos) => {
-      currEdgeInv[piece] = pos;
-    });
-    const currCornerInv: number[] = Array(4);
-    currCornerNorm.forEach((piece, pos) => {
-      currCornerInv[piece] = pos;
-    });
+      const currEdgeNorm = edgePositions.map(
+        (p) => homeEdges.get(rotCurr.patternData["EDGES"].pieces[p])!,
+      );
+      const currCornerNorm = cornerPositions.map(
+        (p) => homeCorners.get(rotCurr.patternData["CORNERS"].pieces[p])!,
+      );
 
-    // Delta permutation: delta[i] = currInv[base[i]]
-    // This gives the PLL algorithm's permutation fingerprint
-    const deltaEdges = baseEdgeNorm.map((piece) => currEdgeInv[piece]);
-    const deltaCorners = baseCornerNorm.map((piece) => currCornerInv[piece]);
+      // Build inverse of current arrangement: currInv[piece] = position
+      const currEdgeInv: number[] = Array(4);
+      currEdgeNorm.forEach((piece, pos) => {
+        currEdgeInv[piece] = pos;
+      });
+      const currCornerInv: number[] = Array(4);
+      currCornerNorm.forEach((piece, pos) => {
+        currCornerInv[piece] = pos;
+      });
 
-    if (!firstDelta) {
-      firstDelta = { corners: deltaCorners, edges: deltaEdges };
-    }
+      // Delta permutation: delta[i] = currInv[base[i]]
+      const deltaEdges = rotBaseEdgeNorm.map((piece) => currEdgeInv[piece]);
+      const deltaCorners = rotBaseCornerNorm.map(
+        (piece) => currCornerInv[piece],
+      );
 
-    // Match against PLL cases
-    for (const [name, caseData] of Object.entries(PLL_CASES)) {
-      if (
-        deltaEdges.every((v, i) => v === caseData.edges[i]) &&
-        deltaCorners.every((v, i) => v === caseData.corners[i])
-      ) {
-        return { caseName: name, delta: null };
+      if (!firstDelta) {
+        firstDelta = { corners: deltaCorners, edges: deltaEdges };
+      }
+
+      // Match against PLL cases
+      for (const [name, caseData] of Object.entries(PLL_CASES)) {
+        if (
+          deltaEdges.every((v, i) => v === caseData.edges[i]) &&
+          deltaCorners.every((v, i) => v === caseData.corners[i])
+        ) {
+          return { caseName: name, delta: null };
+        }
       }
     }
   }
