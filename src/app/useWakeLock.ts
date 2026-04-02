@@ -89,15 +89,15 @@ export function useWakeLock() {
     if (isBluefy && "bluetooth" in navigator) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (navigator as any).bluetooth.setScreenDimEnabled(false);
-        setDiagnostics({ status: "bluefy setScreenDimEnabled(false) called" });
+        (navigator as any).bluetooth.setScreenDimEnabled(true);
+        setDiagnostics({ status: "bluefy setScreenDimEnabled(true) called" });
       } catch (e) {
         setDiagnostics({ status: `bluefy setScreenDimEnabled failed: ${e}` });
       }
       return () => {
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (navigator as any).bluetooth.setScreenDimEnabled(true);
+          (navigator as any).bluetooth.setScreenDimEnabled(false);
         } catch {
           // ignore cleanup errors
         }
