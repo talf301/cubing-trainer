@@ -112,7 +112,14 @@ export function useWakeLock() {
       });
     });
 
-    video.src = SILENT_MP4;
+    // Convert data URI to Blob URL — WKWebView often can't play data: URIs
+    const b64 = SILENT_MP4.split(",")[1];
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: "video/mp4" });
+    const blobUrl = URL.createObjectURL(blob);
+    video.src = blobUrl;
 
     document.body.appendChild(video);
 
