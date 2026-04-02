@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import type { CubeConnection } from "@/core/cube-connection";
 import { useCubeConnection } from "@/features/bluetooth/use-cube-connection";
 import { useSpamTimer } from "./use-spam-timer";
-import type { PllSpamCompletion } from "@/core/pll-spam-session";
+import type { PllSpamCompletion, PllSpamDebugInfo } from "@/core/pll-spam-session";
 
 interface SpamTimerPageProps {
   connection: CubeConnection;
@@ -35,9 +35,44 @@ function AttemptRow({ attempt }: { attempt: PllSpamCompletion }) {
   );
 }
 
+function DebugPanel({ info }: { info: PllSpamDebugInfo }) {
+  return (
+    <div className="rounded border border-gray-700 bg-gray-900 p-3 font-mono text-xs">
+      <h3 className="mb-1 font-semibold text-gray-400">Debug</h3>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+        <span>Last move:</span>
+        <span className="text-gray-300">{info.move}</span>
+        <span>Cross:</span>
+        <span className={info.crossSolved ? "text-green-400" : "text-red-400"}>
+          {info.crossSolved ? "OK" : "BROKEN"}
+        </span>
+        <span>F2L:</span>
+        <span className={info.f2lSolved ? "text-green-400" : "text-red-400"}>
+          {info.f2lSolved ? "OK" : "BROKEN"}
+        </span>
+        <span>OLL:</span>
+        <span className={info.ollSolved ? "text-green-400" : "text-red-400"}>
+          {info.ollSolved ? "OK" : "BROKEN"}
+        </span>
+        <span>Baseline:</span>
+        <span className="text-gray-300">{info.hasBaseline ? "SET" : "NONE"}</span>
+        <span>Moves:</span>
+        <span className="text-gray-300">{info.movesSinceBaseline}</span>
+        <span>Last result:</span>
+        <span className="text-gray-300">{info.lastResult ?? "none"}</span>
+      </div>
+      {info.unmatchedDelta && (
+        <div className="mt-1 text-yellow-400">
+          Unmatched delta: c=[{info.unmatchedDelta.corners.join(",")}] e=[{info.unmatchedDelta.edges.join(",")}]
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SpamTimerPage({ connection }: SpamTimerPageProps) {
   const { status, error, connect } = useCubeConnection(connection);
-  const { lastAttempt, recentAttempts, isPB } = useSpamTimer(connection);
+  const { lastAttempt, recentAttempts, isPB, debugInfo } = useSpamTimer(connection);
 
   const isConnected = status === "connected";
 
@@ -83,6 +118,9 @@ export function SpamTimerPage({ connection }: SpamTimerPageProps) {
           View Stats
         </Link>
       </div>
+
+      {/* Debug panel */}
+      {debugInfo && <DebugPanel info={debugInfo} />}
 
       {/* Scrolling log of recent attempts */}
       {recentAttempts.length > 0 && (

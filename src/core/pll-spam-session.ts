@@ -24,6 +24,22 @@ export interface PllSpamCompletion {
 
 export type PllSpamCompletionListener = (completion: PllSpamCompletion) => void;
 
+/** Debug info emitted on every move for diagnostic display */
+export interface PllSpamDebugInfo {
+  move: string;
+  crossSolved: boolean;
+  f2lSolved: boolean;
+  ollSolved: boolean;
+  hasBaseline: boolean;
+  movesSinceBaseline: number;
+  /** Set when detection triggers but delta doesn't match any case */
+  unmatchedDelta: { corners: number[]; edges: number[] } | null;
+  /** Last recognized case (from successful detection) */
+  lastResult: string | null;
+}
+
+export type PllSpamDebugListener = (info: PllSpamDebugInfo) => void;
+
 // Cached kpuzzle assets (same for every session)
 let cachedKpuzzle: KPuzzle | null = null;
 let cachedGeometry: FaceGeometry | null = null;
@@ -85,6 +101,12 @@ async function getAssets(): Promise<{
   };
 }
 
+interface DeltaPLLResult {
+  caseName: string | null;
+  /** The delta permutation from the first AUF attempt (for debugging) */
+  delta: { corners: number[]; edges: number[] } | null;
+}
+
 /**
  * Identify the PLL case by computing the permutation delta between
  * baseline and current states. Both states must have F2L+OLL solved.
@@ -97,7 +119,7 @@ async function getAssets(): Promise<{
 async function recognizeDeltaPLL(
   baseline: KPattern,
   current: KPattern,
-): Promise<string | null> {
+): Promise<DeltaPLLResult> {
   const { edgePositions, cornerPositions, homeEdges, homeCorners } =
     await getAssets();
 
@@ -114,6 +136,7 @@ async function recognizeDeltaPLL(
 
   // Try 4 AUF rotations on the current state to account for post-AUF
   const rotations = ["", "U", "U2", "U'"];
+  let firstDelta: { corners: number[]; edges: number[] } | null = null;
 
   for (const rot of rotations) {
     const rotCurr = rot ? current.applyAlg(rot) : current;
@@ -140,18 +163,22 @@ async function recognizeDeltaPLL(
     const deltaEdges = baseEdgeNorm.map((piece) => currEdgeInv[piece]);
     const deltaCorners = baseCornerNorm.map((piece) => currCornerInv[piece]);
 
+    if (!firstDelta) {
+      firstDelta = { corners: deltaCorners, edges: deltaEdges };
+    }
+
     // Match against PLL cases
     for (const [name, caseData] of Object.entries(PLL_CASES)) {
       if (
         deltaEdges.every((v, i) => v === caseData.edges[i]) &&
         deltaCorners.every((v, i) => v === caseData.corners[i])
       ) {
-        return name;
+        return { caseName: name, delta: null };
       }
     }
   }
 
-  return null;
+  return { caseName: null, delta: firstDelta };
 }
 
 /**
@@ -171,7 +198,9 @@ export class PllSpamSession {
   private timingStart: number | null = null;
   private geometry: FaceGeometry | null = null;
   private completionListeners = new Set<PllSpamCompletionListener>();
+  private debugListeners = new Set<PllSpamDebugListener>();
   private initialized = false;
+  private lastResult: string | null = null;
 
   /**
    * Ensure kpuzzle assets are loaded. Called lazily on first move.
@@ -216,6 +245,16 @@ export class PllSpamSession {
           this.timingStart = timestamp;
         }
       }
+      this.emitDebug({
+        move: _move,
+        crossSolved,
+        f2lSolved,
+        ollSolved,
+        hasBaseline: this.baseline !== null,
+        movesSinceBaseline: this.movesSinceBaseline,
+        unmatchedDelta: null,
+        lastResult: this.lastResult,
+      });
       return;
     }
 
@@ -225,6 +264,16 @@ export class PllSpamSession {
       this.baseline = stateAfterMove;
       this.movesSinceBaseline = 0;
       this.timingStart = null;
+      this.emitDebug({
+        move: _move,
+        crossSolved,
+        f2lSolved,
+        ollSolved,
+        hasBaseline: true,
+        movesSinceBaseline: 0,
+        unmatchedDelta: null,
+        lastResult: this.lastResult,
+      });
       return;
     }
 
@@ -236,13 +285,34 @@ export class PllSpamSession {
       this.baseline = stateAfterMove;
       this.movesSinceBaseline = 0;
       this.timingStart = null;
+      this.emitDebug({
+        move: _move,
+        crossSolved,
+        f2lSolved,
+        ollSolved,
+        hasBaseline: true,
+        movesSinceBaseline: 0,
+        unmatchedDelta: null,
+        lastResult: this.lastResult,
+      });
       return;
     }
 
     // 4+ moves and condition met — identify PLL via permutation delta
-    const caseName = await recognizeDeltaPLL(this.baseline, stateAfterMove);
+    const { caseName, delta } = await recognizeDeltaPLL(this.baseline, stateAfterMove);
     if (caseName === null) {
       // Unrecognized permutation delta — discard and update baseline
+      this.lastResult = null;
+      this.emitDebug({
+        move: _move,
+        crossSolved,
+        f2lSolved,
+        ollSolved,
+        hasBaseline: true,
+        movesSinceBaseline: this.movesSinceBaseline,
+        unmatchedDelta: delta,
+        lastResult: null,
+      });
       this.baseline = stateAfterMove;
       this.movesSinceBaseline = 0;
       this.timingStart = null;
@@ -261,9 +331,21 @@ export class PllSpamSession {
     };
 
     // Update baseline for next PLL
+    this.lastResult = caseName;
     this.baseline = stateAfterMove;
     this.movesSinceBaseline = 0;
     this.timingStart = null;
+
+    this.emitDebug({
+      move: _move,
+      crossSolved,
+      f2lSolved,
+      ollSolved,
+      hasBaseline: true,
+      movesSinceBaseline: 0,
+      unmatchedDelta: null,
+      lastResult: caseName,
+    });
 
     // Emit completion event
     for (const listener of this.completionListeners) {
@@ -286,5 +368,19 @@ export class PllSpamSession {
 
   removeCompletionListener(listener: PllSpamCompletionListener): void {
     this.completionListeners.delete(listener);
+  }
+
+  addDebugListener(listener: PllSpamDebugListener): void {
+    this.debugListeners.add(listener);
+  }
+
+  removeDebugListener(listener: PllSpamDebugListener): void {
+    this.debugListeners.delete(listener);
+  }
+
+  private emitDebug(info: PllSpamDebugInfo): void {
+    for (const listener of this.debugListeners) {
+      listener(info);
+    }
   }
 }

@@ -4,6 +4,7 @@ import type { CubeConnection, CubeMoveEvent } from "@/core/cube-connection";
 import {
   PllSpamSession,
   type PllSpamCompletion,
+  type PllSpamDebugInfo,
 } from "@/core/pll-spam-session";
 import { PllSpamStore, type PllSpamAttempt } from "@/lib/pll-spam-store";
 
@@ -19,6 +20,8 @@ export interface SpamTimerState {
   recentAttempts: PllSpamCompletion[];
   /** Whether the last attempt was a personal best for that case */
   isPB: boolean;
+  /** Debug info from the most recent move */
+  debugInfo: PllSpamDebugInfo | null;
 }
 
 export function useSpamTimer(connection: CubeConnection): SpamTimerState {
@@ -29,6 +32,7 @@ export function useSpamTimer(connection: CubeConnection): SpamTimerState {
   );
   const [recentAttempts, setRecentAttempts] = useState<PllSpamCompletion[]>([]);
   const [isPB, setIsPB] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<PllSpamDebugInfo | null>(null);
 
   // Track per-case best times for PB detection (loaded from DB on mount)
   const bestTimesRef = useRef<Map<string, number>>(new Map());
@@ -90,7 +94,11 @@ export function useSpamTimer(connection: CubeConnection): SpamTimerState {
     };
 
     session.addCompletionListener(onCompletion);
-    return () => session.removeCompletionListener(onCompletion);
+    session.addDebugListener(setDebugInfo);
+    return () => {
+      session.removeCompletionListener(onCompletion);
+      session.removeDebugListener(setDebugInfo);
+    };
   }, []);
 
   // Feed cube moves to the session
@@ -110,5 +118,6 @@ export function useSpamTimer(connection: CubeConnection): SpamTimerState {
     lastAttempt,
     recentAttempts,
     isPB,
+    debugInfo,
   };
 }

@@ -205,6 +205,29 @@ export async function segmentSolve(
     }
     if (ollState && splits.crossFace) {
       splits.pllCase = await recognizePLL(ollState, splits.crossFace) ?? undefined;
+      // Debug: log PLL recognition details
+      const oppFaceIdx = OPPOSITE_FACE[crossFaceIdx!];
+      const uCorners = Array.from(ollState.patternData["CORNERS"].pieces.slice(0, 8));
+      const uEdges = Array.from(ollState.patternData["EDGES"].pieces.slice(0, 12));
+      const uCornerOrient = Array.from(ollState.patternData["CORNERS"].orientation.slice(0, 8));
+      const uEdgeOrient = Array.from(ollState.patternData["EDGES"].orientation.slice(0, 12));
+      console.log("[segmenter] PLL recognition:", {
+        crossFace: splits.crossFace,
+        pllCase: splits.pllCase ?? "UNRECOGNIZED",
+        ollCase: splits.ollCase,
+        llCorners: geometry.faceCorners[oppFaceIdx].map(p => uCorners[p]),
+        llEdges: geometry.faceEdges[oppFaceIdx].map(p => uEdges[p]),
+        llCornerOrient: geometry.faceCorners[oppFaceIdx].map(p => uCornerOrient[p]),
+        llEdgeOrient: geometry.faceEdges[oppFaceIdx].map(p => uEdgeOrient[p]),
+      });
+    } else {
+      console.log("[segmenter] PLL recognition skipped:", {
+        hasOllState: !!ollState,
+        crossFace: splits.crossFace,
+        crossFaceIdx,
+        f2lDetected: !!f2lState,
+        ollTime: splits.ollTime,
+      });
     }
 
     return splits;
