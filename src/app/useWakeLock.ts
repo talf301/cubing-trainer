@@ -4,7 +4,7 @@ export interface WakeLockDiagnostics {
   userAgent: string;
   isBluefy: boolean;
   nativeApiExists: boolean;
-  path: "native" | "video-fallback";
+  path: "native" | "bluefy" | "none";
   status: string;
 }
 
@@ -32,18 +32,17 @@ export function useWakeLockDiagnostics(): WakeLockDiagnostics | null {
 /**
  * Keeps the screen awake while the app is visible.
  *
- * Primary: Screen Wake Lock API (Chrome, Safari 16.4+).
- * Fallback: plays a tiny silent video in a loop, which tricks
- * iOS / Bluefy into keeping the screen on.
+ * Desktop/Chrome: Screen Wake Lock API.
+ * Bluefy (iOS): bluetooth.setScreenDimEnabled() API.
  *
- * Re-acquires the lock when the tab regains visibility (browsers
- * release wake locks when a tab is backgrounded).
+ * Re-acquires the native lock when the tab regains visibility
+ * (browsers release wake locks when a tab is backgrounded).
  */
 export function useWakeLock() {
   useEffect(() => {
     const isBluefy = /Bluefy/i.test(navigator.userAgent);
     const hasNativeWakeLock = !isBluefy && "wakeLock" in navigator;
-    const path = hasNativeWakeLock ? "native" : "video-fallback";
+    const path = hasNativeWakeLock ? "native" : isBluefy ? "bluefy" : "none";
 
     currentDiagnostics = {
       userAgent: navigator.userAgent,
