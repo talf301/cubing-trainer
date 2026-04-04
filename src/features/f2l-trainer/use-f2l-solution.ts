@@ -88,12 +88,13 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
     setResult(null);
   }, []);
 
-  // Load attempt history on mount for weakness-based case selection
+  // Load attempt history on mount, then present first case
   useEffect(() => {
     store.getAllAttempts().then((attempts) => {
       caseStatsRef.current = buildCaseStats(attempts);
+      presentNext();
     });
-  }, []);
+  }, [presentNext]);
 
   // Listen to phase changes
   useEffect(() => {
