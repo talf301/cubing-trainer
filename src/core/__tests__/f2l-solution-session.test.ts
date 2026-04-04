@@ -140,6 +140,15 @@ describe("F2LSolutionSession", () => {
   });
 
   describe("move handling and verification", () => {
+    it("presentCase works for all 41 cases", async () => {
+      for (const caseDef of F2L_CASES) {
+        const session = new F2LSolutionSession();
+        await session.presentCase(caseDef.name);
+        expect(session.phase).toBe("presenting");
+        expect(session.caseState).not.toBeNull();
+      }
+    });
+
     it("applies canonical algorithm and detects FR slot solved", async () => {
       // Test several cases to confirm virtual state tracking works
       for (const caseDef of F2L_CASES.slice(0, 5)) {

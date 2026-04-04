@@ -79,8 +79,9 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
 
   // Present the next case based on weakness-weighted selection
   const presentNext = useCallback(async () => {
-    const nextCase = selectF2LCase(caseStatsRef.current);
     const session = sessionRef.current;
+    if (session.phase !== "idle") return;
+    const nextCase = selectF2LCase(caseStatsRef.current);
     await session.presentCase(nextCase);
     setCaseName(session.currentCase?.name ?? null);
     setCasePattern(session.caseState);
@@ -90,10 +91,13 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
 
   // Load attempt history on mount, then present first case
   useEffect(() => {
+    let cancelled = false;
     store.getAllAttempts().then((attempts) => {
+      if (cancelled) return;
       caseStatsRef.current = buildCaseStats(attempts);
       presentNext();
     });
+    return () => { cancelled = true; };
   }, [presentNext]);
 
   // Listen to phase changes
@@ -140,7 +144,7 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
     return () => connection.removeMoveListener(onMove);
   }, [connection]);
 
-  // Reset session on disconnect
+  // Reset session on disconnect, re-present on reconnect
   useEffect(() => {
     const onStatus = (status: string) => {
       if (status === "disconnected") {
@@ -151,11 +155,16 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
         setCasePattern(null);
         setTimerMs(0);
         setResult(null);
+      } else if (status === "connected") {
+        // Re-present a case if the session was reset by disconnect
+        if (sessionRef.current.phase === "idle") {
+          presentNext();
+        }
       }
     };
     connection.addStatusListener(onStatus);
     return () => connection.removeStatusListener(onStatus);
-  }, [connection, stopTimer]);
+  }, [connection, stopTimer, presentNext]);
 
   const skip = useCallback(() => {
     sessionRef.current.skip();
