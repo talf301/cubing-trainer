@@ -12,6 +12,11 @@ const TRAINING_TOOLS = [
     description: "Drill and learn all 21 PLL algorithms with smart case selection and move-by-move feedback",
     path: "/training/pll",
   },
+  {
+    title: "F2L Trainer",
+    description: "Practice all 41 F2L cases with 3D case display, smart cube verification, and weakness-based drilling",
+    path: "/training/f2l",
+  },
 ];
 
 export function TrainingPage() {

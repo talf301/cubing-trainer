@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./Layout";
-import { Timer, History, Training, TrainingCross, PllTrainerRoute, PllSpamRoute, PllSpamStatsRoute, Settings, Debug } from "./routes";
+import { Timer, History, Training, TrainingCross, PllTrainerRoute, PllSpamRoute, PllSpamStatsRoute, F2LSolutionRoute, F2LSolutionStatsRoute, Settings, Debug } from "./routes";
 import { useWakeLock } from "./useWakeLock";
 
 export default function App() {
@@ -15,6 +15,8 @@ export default function App() {
           <Route path="/training" element={<Training />} />
           <Route path="/training/cross" element={<TrainingCross />} />
           <Route path="/training/pll" element={<PllTrainerRoute />} />
+          <Route path="/training/f2l" element={<F2LSolutionRoute />} />
+          <Route path="/training/f2l/stats" element={<F2LSolutionStatsRoute />} />
           <Route path="/pll-spam" element={<PllSpamRoute />} />
           <Route path="/pll-spam/stats" element={<PllSpamStatsRoute />} />
           <Route path="/settings" element={<Settings />} />
