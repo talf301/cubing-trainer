@@ -12,37 +12,30 @@ interface F2LCaseViewerProps {
 /**
  * Stickering mask for F2L case display.
  *
- * The setup alg includes x2 to orient white cross on D. Because the mask
- * operates on piece identity (solved-state index), indices must reflect the
- * pieces that occupy the target positions AFTER x2:
+ * Highlights the FR slot pair (corner + edge), 4 cross edges, and all centers.
+ * Everything else is gray ("ignored").
  *
- *   After x2, D-layer edge positions contain solved pieces 0,1,2,3 (cross).
- *   After x2, DFR corner position contains solved piece 1.
- *   After x2, FR edge position contains solved piece 10.
+ * Piece indices (cubing.js 3x3x3):
+ *   EDGES: 4=DF, 5=DR, 6=DB, 7=DL (cross edges), 8=FR (target edge)
+ *   CORNERS: 4=DFR (target corner)
  */
 const reg = "regular" as const;
 const ign = "ignored" as const;
 
-// Piece indices that land at cross/FR positions after x2
-const CROSS_EDGE_PIECES = new Set([0, 1, 2, 3]);
-const FR_EDGE_PIECE = 10;
-const DFR_CORNER_PIECE = 1;
+const HIGHLIGHTED_EDGES = new Set([4, 5, 6, 7, 8]);
+const DFR_CORNER = 4;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const F2L_STICKERING_MASK: any = {
   orbits: {
     EDGES: {
       pieces: Array.from({ length: 12 }, (_, i) => ({
-        facelets: CROSS_EDGE_PIECES.has(i) || i === FR_EDGE_PIECE
-          ? [reg, reg]
-          : [ign, ign],
+        facelets: HIGHLIGHTED_EDGES.has(i) ? [reg, reg] : [ign, ign],
       })),
     },
     CORNERS: {
       pieces: Array.from({ length: 8 }, (_, i) => ({
-        facelets: i === DFR_CORNER_PIECE
-          ? [reg, reg, reg]
-          : [ign, ign, ign],
+        facelets: i === DFR_CORNER ? [reg, reg, reg] : [ign, ign, ign],
       })),
     },
     CENTERS: {
@@ -68,9 +61,9 @@ export function F2LCaseViewer({ caseName, moves = [] }: F2LCaseViewerProps) {
 
     // The algorithm solves the case (case -> solved).
     // Inverting it gives us the case state (solved -> case).
-    // Prepend x2 so white cross is on bottom (yellow up).
-    const inverseAlg = new Alg(caseDefinition.algorithm).invert().toString();
-    const setupAlg = `x2 ${inverseAlg}`;
+    // No cube rotation: default orientation has green F, red R — the standard
+    // F2L pair colors. The cross face is D (yellow in cubing.js default).
+    const setupAlg = new Alg(caseDefinition.algorithm).invert().toString();
 
     const player = new TwistyPlayer({
       puzzle: "3x3x3",

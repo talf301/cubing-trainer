@@ -1,7 +1,7 @@
 import { Alg } from "cubing/alg";
 import type { KPattern, KPuzzle } from "cubing/kpuzzle";
 import { cube3x3x3 } from "cubing/puzzles";
-import { buildFaceGeometry, type FaceGeometry } from "./cfop-segmenter";
+import { buildFaceGeometry, isCrossSolved, type FaceGeometry } from "./cfop-segmenter";
 import { F2L_CASES, type F2LCaseDefinition } from "./f2l-cases";
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -270,9 +270,9 @@ export class F2LSolutionSession {
     this._caseState = this._caseState!.applyMove(move);
     this._moveCount++;
 
-    // Check if FR slot is solved
+    // Check if FR slot is solved AND cross is still intact
     const { geometry } = await getAssets();
-    if (isFRSlotSolved(this._caseState, geometry)) {
+    if (isFRSlotSolved(this._caseState, geometry) && isCrossSolved(this._caseState, geometry, CROSS_FACE_IDX)) {
       this._solveEndTime = timestamp;
       await this.completeSolve();
     }
