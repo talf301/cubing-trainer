@@ -23,8 +23,7 @@ async function setupMockSolver() {
   const { experimentalSolve3x3x3IgnoringCenters } = await import(
     "cubing/search"
   );
-  const kpuzzle = await cube3x3x3.kpuzzle();
-  const solved = kpuzzle.defaultPattern();
+  await cube3x3x3.kpuzzle();
 
   // The mock solver: given a pattern, find a move sequence that "solves" it.
   // We simulate the solver by returning a short known alg. The key insight:
@@ -32,7 +31,7 @@ async function setupMockSolver() {
   // For testing, we just return a fixed alg. The module will invert it for
   // the scramble.
   vi.mocked(experimentalSolve3x3x3IgnoringCenters).mockImplementation(
-    async (pattern: KPattern) => {
+    async (_pattern: KPattern) => {
       // Return a simple alg — the test verifies the wiring, not the solver.
       // We return an identity-like alg that the module will invert.
       // Actually, let's compute a real "solution" by hand:

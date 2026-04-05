@@ -152,7 +152,7 @@ async function doFullCycle(
   // Now in solving_pll — add recognition pause then solve PLL
   t += recognitionPausePLL;
   const pllAlg = PLL_CASES[pllCase].algorithm;
-  const pllResult = await applyMoves(session, state, pllAlg, t, pllMoveInterval);
+  await applyMoves(session, state, pllAlg, t, pllMoveInterval);
 
   return { completions, phases };
 }
