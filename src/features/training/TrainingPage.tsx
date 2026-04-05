@@ -17,6 +17,11 @@ const TRAINING_TOOLS = [
     description: "Practice all 41 F2L cases with 3D case display, smart cube verification, and weakness-based drilling",
     path: "/training/f2l",
   },
+  {
+    title: "Last Layer Practice",
+    description: "Timed last layer practice with automatic OLL/PLL phase detection and per-case statistics",
+    path: "/training/ll",
+  },
 ];
 
 export function TrainingPage() {

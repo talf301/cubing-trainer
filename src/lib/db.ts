@@ -78,13 +78,26 @@ export interface PhasewiseDB {
     };
     indexes: { "by-case": string; "by-timestamp": number };
   };
+  llPracticeAttempts: {
+    key: string;
+    value: {
+      id: string;
+      ollSegments: { caseName: string; recognitionTime: number; executionTime: number }[];
+      pllSegments: { caseName: string; recognitionTime: number; executionTime: number }[];
+      ollTime: number;
+      pllTime: number;
+      totalTime: number;
+      timestamp: number;
+    };
+    indexes: { "by-timestamp": number };
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<PhasewiseDB>> | null = null;
 
 export function getDB(): Promise<IDBPDatabase<PhasewiseDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<PhasewiseDB>("phasewise", 5, {
+    dbPromise = openDB<PhasewiseDB>("phasewise", 6, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           const solveStore = db.createObjectStore("solves", { keyPath: "id" });
@@ -119,6 +132,12 @@ export function getDB(): Promise<IDBPDatabase<PhasewiseDB>> {
           });
           f2lStore.createIndex("by-case", "caseName");
           f2lStore.createIndex("by-timestamp", "timestamp");
+        }
+        if (oldVersion < 6) {
+          const llPracticeStore = db.createObjectStore("llPracticeAttempts", {
+            keyPath: "id",
+          });
+          llPracticeStore.createIndex("by-timestamp", "timestamp");
         }
       },
     });
