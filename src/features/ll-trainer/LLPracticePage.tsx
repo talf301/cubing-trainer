@@ -1,4 +1,5 @@
 // src/features/ll-trainer/LLPracticePage.tsx
+import { Link } from "react-router-dom";
 import type { CubeConnection } from "@/core/cube-connection";
 import { useCubeConnection } from "@/features/bluetooth/use-cube-connection";
 import { useLLPractice } from "./use-ll-practice";
@@ -85,6 +86,13 @@ export function LLPracticePage({ connection }: LLPracticePageProps) {
           <LLTimeBar completion={lastCompletion} />
         </div>
       )}
+
+      {/* Stats link */}
+      <div className="text-center">
+        <Link to="/training/ll/stats" className="text-blue-400 hover:text-blue-300">
+          View Stats
+        </Link>
+      </div>
 
       {/* Recent attempts log */}
       {recentCompletions.length > 0 && (
