@@ -85,13 +85,18 @@ export function F2LSolutionPage({ connection }: F2LSolutionPageProps) {
                 <p className="text-lg text-gray-300">
                   {result.moveCount} moves
                   {result.optimal ? (
-                    <span className="ml-2 text-green-400">✓ Optimal</span>
+                    <span className="ml-2 text-green-400">Optimal</span>
                   ) : (
                     <span className="ml-2 text-yellow-400">
-                      (optimal: fewer moves)
+                      (optimal: {result.canonicalMoveCount})
                     </span>
                   )}
                 </p>
+                {!result.optimal && (
+                  <p className="font-mono text-sm text-gray-400">
+                    {result.canonicalAlgorithm}
+                  </p>
+                )}
               </div>
             )}
           </div>

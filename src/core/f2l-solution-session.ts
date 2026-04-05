@@ -13,6 +13,8 @@ export interface F2LAttemptResult {
   time: number; // ms
   moveCount: number;
   optimal: boolean; // moveCount <= canonical algorithm move count
+  canonicalMoveCount: number;
+  canonicalAlgorithm: string;
 }
 
 export type F2LPhaseListener = (phase: F2LSessionPhase) => void;
@@ -237,12 +239,19 @@ export class F2LSolutionSession {
     const caseDef = F2L_CASES.find((c) => c.name === caseName);
     if (!caseDef) throw new Error(`Unknown F2L case: ${caseName}`);
 
-    const { kpuzzle } = await getAssets();
+    const { kpuzzle, geometry } = await getAssets();
     const solved = kpuzzle.defaultPattern();
 
     // Apply inverse of the canonical algorithm to get the case state
     const inverseAlg = new Alg(caseDef.algorithm).invert().toString();
-    this._caseState = solved.applyAlg(inverseAlg);
+    const caseState = solved.applyAlg(inverseAlg);
+
+    // Guard: skip if the setup results in an already-solved FR slot + cross
+    if (isFRSlotSolved(caseState, geometry) && isCrossSolved(caseState, geometry, CROSS_FACE_IDX)) {
+      return;
+    }
+
+    this._caseState = caseState;
     this._currentCase = caseDef;
     this._moveCount = 0;
     this._solveStartTime = 0;
@@ -345,6 +354,8 @@ export class F2LSolutionSession {
       time,
       moveCount: this._moveCount,
       optimal,
+      canonicalMoveCount,
+      canonicalAlgorithm: caseDef.algorithm,
     };
     this._lastResult = result;
 

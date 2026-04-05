@@ -149,9 +149,8 @@ describe("F2LSolutionSession", () => {
       }
     });
 
-    it("applies canonical algorithm and detects FR slot solved", async () => {
-      // Test several cases to confirm virtual state tracking works
-      for (const caseDef of F2L_CASES.slice(0, 5)) {
+    it("applies canonical algorithm and detects FR slot solved for all 41 cases", async () => {
+      for (const caseDef of F2L_CASES) {
         const session = new F2LSolutionSession();
         await session.presentCase(caseDef.name);
         await feedMoves(session, caseDef.algorithm, 1000);
@@ -230,15 +229,10 @@ describe("F2LSolutionSession", () => {
       const results: F2LAttemptResult[] = [];
       session.addResultListener((r) => results.push(r));
 
-      // F2L #1: "U R U' R'" = 4 moves. We'll add extra moves that still solve.
-      // Apply some extra U moves first, then the algorithm
-      await session.presentCase("F2L #2"); // "F' U' F" = 3 moves
+      // F2L #3: "F' U' F" = 3 moves. We'll add extra U U' to make it suboptimal.
+      await session.presentCase("F2L #3"); // "F' U' F" = 3 moves
 
-      // Apply a longer solution: U F' U' F U' is more moves but
-      // let's use something that still solves FR slot.
-      // Actually, let's just verify that move count > canonical triggers suboptimal.
-      // We need to feed moves that eventually solve the slot but with extra moves.
-      // Simplest: U U' then the canonical alg (6 moves vs 3 canonical)
+      // Simplest: U U' then the canonical alg (5 moves vs 3 canonical)
       await feedMoves(session, "U U' F' U' F", 1000);
 
       expect(results).toHaveLength(1);
@@ -309,7 +303,7 @@ describe("F2LSolutionSession", () => {
 
     it("does not auto-advance on suboptimal solve", async () => {
       const session = new F2LSolutionSession();
-      await session.presentCase("F2L #2"); // "F' U' F" = 3 moves
+      await session.presentCase("F2L #3"); // "F' U' F" = 3 moves
 
       // Feed extra moves to make it suboptimal
       await feedMoves(session, "U U' F' U' F", 1000);
