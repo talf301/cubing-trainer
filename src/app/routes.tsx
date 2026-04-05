@@ -12,6 +12,8 @@ import { SpamTimerPage } from "@/features/pll-spam/SpamTimerPage";
 import { SpamStatsPage } from "@/features/pll-spam/SpamStatsPage";
 import { F2LSolutionPage } from "@/features/f2l-trainer/F2LSolutionPage";
 import { F2LStatsPage } from "@/features/f2l-trainer/F2LStatsPage";
+import { LLPracticePage } from "@/features/ll-trainer/LLPracticePage";
+import { LLStatsPage } from "@/features/ll-trainer/LLStatsPage";
 
 // Shared connection instance — Timer, Debug, and Training all use the same cube
 const sharedConnection = new SmartCubeConnection();
@@ -64,6 +66,14 @@ function F2LSolutionStatsRoute() {
   return <F2LStatsPage />;
 }
 
+function LLPracticeRoute() {
+  return <LLPracticePage connection={sharedConnection} />;
+}
+
+function LLStatsRoute() {
+  return <LLStatsPage />;
+}
+
 function Settings() {
   return <h1 className="text-2xl font-bold">Settings</h1>;
 }
@@ -72,4 +82,4 @@ function Debug() {
   return <BluetoothDebug connection={sharedConnection} />;
 }
 
-export { Timer, History, Training, TrainingCross, PllTrainerRoute, PllSpamRoute, PllSpamStatsRoute, F2LSolutionRoute, F2LSolutionStatsRoute, Settings, Debug };
+export { Timer, History, Training, TrainingCross, PllTrainerRoute, PllSpamRoute, PllSpamStatsRoute, F2LSolutionRoute, F2LSolutionStatsRoute, LLPracticeRoute, LLStatsRoute, Settings, Debug };
