@@ -14,33 +14,43 @@ const reg = "regular" as const;
 const ign = "ignored" as const;
 
 /**
- * Compute a stickering mask that highlights the FR pair pieces wherever
- * they actually are, plus the cross edges and centers.
+ * z2 orients the cube with white on D, green on F, orange on R — matching
+ * SpeedCubeDB's F2L display. The DFR pair becomes white/green/orange.
+ */
+const ROTATION = "z2";
+
+/**
+ * Compute a dynamic stickering mask for a specific F2L case.
  *
- * The mask is position-based in cubing.js: entry i controls the sticker
- * at orbit position i. We find which positions the DFR corner (piece 4)
- * and FR edge (piece 8) occupy in the case setup state, and highlight those.
- *
- * Cross edge positions (4–7, D-layer) are always highlighted.
+ * The mask is position-based in cubing.js. We determine which pieces
+ * belong at DFR and FR in the *rotated* solved state, then find where
+ * those pieces actually are in the setup state. This ensures the
+ * highlighted corner/edge always match the pair the user needs to solve.
  */
 async function computeF2LMask(setupAlg: string) {
   const kpuzzle = await cube3x3x3.kpuzzle();
-  const caseState = kpuzzle.defaultPattern().applyAlg(setupAlg);
+  const solved = kpuzzle.defaultPattern();
 
-  const cornerPieces = caseState.patternData["CORNERS"].pieces;
-  const edgePieces = caseState.patternData["EDGES"].pieces;
+  // Determine which pieces should be at DFR(4) and FR(8) in the rotated frame
+  const rotatedSolved = solved.applyAlg(ROTATION);
+  const targetCorner = rotatedSolved.patternData["CORNERS"].pieces[4];
+  const targetEdge = rotatedSolved.patternData["EDGES"].pieces[8];
 
-  // DFR corner = piece 4, FR edge = piece 8
+  // Find where those pieces are in the full setup state (rotation + inverse alg)
+  const setupState = solved.applyAlg(setupAlg);
+  const cornerPieces = setupState.patternData["CORNERS"].pieces;
+  const edgePieces = setupState.patternData["EDGES"].pieces;
+
   let frCornerPos = -1;
   for (let i = 0; i < 8; i++) {
-    if (cornerPieces[i] === 4) { frCornerPos = i; break; }
+    if (cornerPieces[i] === targetCorner) { frCornerPos = i; break; }
   }
   let frEdgePos = -1;
   for (let i = 0; i < 12; i++) {
-    if (edgePieces[i] === 8) { frEdgePos = i; break; }
+    if (edgePieces[i] === targetEdge) { frEdgePos = i; break; }
   }
 
-  // Cross edges (D-layer positions) + the displaced FR edge
+  // Cross edges (D-layer positions 4–7) + the displaced FR edge
   const highlightedEdges = new Set([4, 5, 6, 7, frEdgePos]);
   const highlightedCorners = new Set([frCornerPos]);
 
@@ -80,7 +90,9 @@ export function F2LCaseViewer({ caseName, moves = [] }: F2LCaseViewerProps) {
 
     let cancelled = false;
 
-    const setupAlg = new Alg(caseDefinition.algorithm).invert().toString();
+    // z2 puts white on D, green on F. Then the inverse alg sets up the case.
+    const inverseAlg = new Alg(caseDefinition.algorithm).invert().toString();
+    const setupAlg = `${ROTATION} ${inverseAlg}`;
 
     (async () => {
       const mask = await computeF2LMask(setupAlg);
