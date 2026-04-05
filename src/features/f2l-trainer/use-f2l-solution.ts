@@ -17,6 +17,7 @@ export interface F2LSolutionState {
   phase: F2LSessionPhase;
   caseName: string | null;
   casePattern: KPattern | null;
+  moves: string[];
   timerMs: number;
   result: F2LAttemptResult | null;
   skip: () => void;
@@ -59,6 +60,7 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
   const [phase, setPhase] = useState<F2LSessionPhase>("idle");
   const [caseName, setCaseName] = useState<string | null>(null);
   const [casePattern, setCasePattern] = useState<KPattern | null>(null);
+  const [moves, setMoves] = useState<string[]>([]);
   const [timerMs, setTimerMs] = useState(0);
   const [result, setResult] = useState<F2LAttemptResult | null>(null);
 
@@ -85,6 +87,7 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
     await session.presentCase(nextCase);
     setCaseName(session.currentCase?.name ?? null);
     setCasePattern(session.caseState);
+    setMoves([]);
     setTimerMs(0);
     setResult(null);
   }, []);
@@ -134,11 +137,15 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
     return () => session.removeResultListener(onResult);
   }, []);
 
-  // Feed cube moves to the session
+  // Feed cube moves to the session and track for visualization
   useEffect(() => {
     const session = sessionRef.current;
     const onMove = (event: CubeMoveEvent) => {
-      session.onMove(event.move.toString(), event.timestamp);
+      const moveStr = event.move.toString();
+      session.onMove(moveStr, event.timestamp);
+      if (session.phase === "solving" || session.phase === "presenting") {
+        setMoves((prev) => [...prev, moveStr]);
+      }
     };
     connection.addMoveListener(onMove);
     return () => connection.removeMoveListener(onMove);
@@ -153,6 +160,7 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
         setPhase("idle");
         setCaseName(null);
         setCasePattern(null);
+        setMoves([]);
         setTimerMs(0);
         setResult(null);
       } else if (status === "connected") {
@@ -174,5 +182,5 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
     sessionRef.current.next();
   }, []);
 
-  return { phase, caseName, casePattern, timerMs, result, skip, next };
+  return { phase, caseName, casePattern, moves, timerMs, result, skip, next };
 }

@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { cube3x3x3 } from "cubing/puzzles";
-import type { KPuzzle } from "cubing/kpuzzle";
+import type { KPattern, KPuzzle } from "cubing/kpuzzle";
 import {
   deriveKeyAndIv,
   parseMacAddress,
@@ -527,20 +527,6 @@ describe("faceletToKPattern", () => {
 // ─── Move gap handling (integration-level via handleMoves) ──────────────────
 
 describe("MoYuBluetoothConnection move gap handling", () => {
-  // We test the move processing logic by examining the exported parseMessage
-  // and simulating the sequence of events that MoYuBluetoothConnection handles.
-  // Since handleMoves is private, we verify behavior via the public interface
-  // using a mock BluetoothDevice.
-
-  function createMockDevice(): BluetoothDevice {
-    return {
-      name: "WCU_MY32_ABCD",
-      gatt: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    } as unknown as BluetoothDevice;
-  }
-
   it("parseMessage correctly identifies move count and buffer", () => {
     // Buffer always holds 5 moves; uninitialized slots are 0 = F CW (valid).
     // We set 2 specific moves and verify they appear correctly.
@@ -599,7 +585,7 @@ describe("MoYuBluetoothConnection move gap handling", () => {
  * Convert a KPattern back to a 54-character facelet string (for testing).
  * This is the inverse of faceletToKPattern.
  */
-function kpatternToFacelets(pattern: { patternData: { CORNERS: { pieces: number[]; orientation: number[] }; EDGES: { pieces: number[]; orientation: number[] } } }): string {
+function kpatternToFacelets(pattern: KPattern): string {
   const CORNER_COLORS_LOCAL = [
     ["U", "R", "F"], ["U", "B", "R"], ["U", "L", "B"], ["U", "F", "L"],
     ["D", "F", "R"], ["D", "L", "F"], ["D", "B", "L"], ["D", "R", "B"],

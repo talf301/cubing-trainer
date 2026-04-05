@@ -21,7 +21,7 @@ function formatTime(ms: number): string {
 
 export function F2LSolutionPage({ connection }: F2LSolutionPageProps) {
   const { status, error, connect } = useCubeConnection(connection);
-  const { phase, caseName, timerMs, result, skip, next } =
+  const { phase, caseName, moves, timerMs, result, skip, next } =
     useF2LSolution(connection);
 
   const isConnected = status === "connected";
@@ -68,7 +68,7 @@ export function F2LSolutionPage({ connection }: F2LSolutionPageProps) {
           {/* 3D model — takes up available space */}
           <div className="flex flex-1 items-center justify-center">
             {caseName ? (
-              <F2LCaseViewer caseName={caseName} />
+              <F2LCaseViewer caseName={caseName} moves={moves} />
             ) : (
               <p className="text-gray-400">Loading case…</p>
             )}

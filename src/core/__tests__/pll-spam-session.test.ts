@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { cube3x3x3 } from "cubing/puzzles";
 import type { KPattern, KPuzzle } from "cubing/kpuzzle";
 import {
@@ -55,7 +55,7 @@ describe("PllSpamSession", () => {
 
     // Now apply T-perm algorithm
     const tAlg = PLL_CASES["T"].algorithm;
-    const result = await applyMoves(session, state, tAlg, 1000, 50);
+    await applyMoves(session, state, tAlg, 1000, 50);
 
     // After T-perm, cube should be back to F2L+OLL solved (with possible AUF)
     // T-perm ends in a state where F2L is solved and OLL is solved
@@ -218,7 +218,7 @@ describe("PllSpamSession", () => {
     await session.onMove("U", 500, state);
 
     // Now do the PLL
-    const r = await applyMoves(session, state, tAlg, 1000, 50);
+    await applyMoves(session, state, tAlg, 1000, 50);
 
     expect(completions).toHaveLength(1);
     expect(completions[0].caseName).toBe("T");
@@ -242,7 +242,7 @@ describe("PllSpamSession", () => {
 
     // Now do a PLL from this new baseline
     const tAlg = PLL_CASES["T"].algorithm;
-    const r = await applyMoves(session, state, tAlg, 500, 50);
+    await applyMoves(session, state, tAlg, 500, 50);
 
     expect(completions).toHaveLength(1);
     expect(completions[0].caseName).toBe("T");
@@ -286,7 +286,7 @@ describe("PllSpamSession", () => {
     // This means timingStart is set on R'
     // Let's execute T-perm: R U R' U' R' F R2 U' R' U' R U R' F'
     const tAlg = PLL_CASES["T"].algorithm;
-    const r = await applyMoves(session, state, tAlg, 1000, 50);
+    await applyMoves(session, state, tAlg, 1000, 50);
 
     expect(completions).toHaveLength(1);
     // Time should start from first move of the T-perm (which breaks F2L)

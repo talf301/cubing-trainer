@@ -8,7 +8,7 @@ import {
   type PllRecognitionAttempt,
   type RecognitionPhase,
 } from "../pll-recognition-session";
-import type { Color, AUF, ViewingCorner } from "../pll-sticker-cache";
+import type { Color } from "../pll-sticker-cache";
 
 function createMockStatsStore(): PllRecognitionStatsStoreInterface {
   return {
