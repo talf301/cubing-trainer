@@ -12,63 +12,81 @@ interface F2LCaseViewerProps {
 
 const reg = "regular" as const;
 const ign = "ignored" as const;
+const dim = "dim" as const;
 
 /**
- * z2 orients the cube with white on D, green on F, orange on R — matching
- * SpeedCubeDB's F2L display. The DFR pair becomes white/green/orange.
+ * z2 in experimentalSetupAlg is applied by TwistyPlayer as a visual rotation
+ * — it flips the 3D model 180° around the F-B axis so white appears on the
+ * visual bottom. It does NOT permute the internal piece state. The piece
+ * state is computed from the non-rotation moves only (the inverse alg).
  */
 const ROTATION = "z2";
 
 /**
+ * Cubing.js 3x3x3 piece identities (piece N starts at position N in solved):
+ *  - Corner 0 = UFR (white/green/red)
+ *  - Corner 4 = DFR (yellow/green/red)
+ *  - Edge 0–3 = UF, UR, UB, UL (white cross edges)
+ *  - Edge 8 = FR (green/red)
+ *
+ * With z2 visual rotation, white lands on D visually. So the F2L pair (white
+ * cross color + F + R) corresponds to cubing.js piece 0 (corner) and piece 8
+ * (edge). The 4 white cross edges are pieces 0–3.
+ */
+const PAIR_CORNER_PIECE = 0;
+const PAIR_EDGE_PIECE = 8;
+const CROSS_EDGE_PIECES = [0, 1, 2, 3];
+
+/**
  * Compute a dynamic stickering mask for a specific F2L case.
  *
- * The mask is position-based in cubing.js. We determine which pieces
- * belong at DFR and FR in the *rotated* solved state, then find where
- * those pieces actually are in the setup state. This ensures the
- * highlighted corner/edge always match the pair the user needs to solve.
+ * Strategy: find where each target piece currently lives in the piece state
+ * (computed from the inverse alg only, since z2 is visual-only in
+ * TwistyPlayer). Highlight those positions in the mask. The mask operates on
+ * cubing.js's internal position indices; the z2 visual rotation in the
+ * setup alg handles the display flip automatically.
  */
-async function computeF2LMask(setupAlg: string) {
+async function computeF2LMask(inverseAlg: string) {
   const kpuzzle = await cube3x3x3.kpuzzle();
   const solved = kpuzzle.defaultPattern();
 
-  // Determine which pieces should be at DFR(4) and FR(8) in the rotated frame
-  const rotatedSolved = solved.applyAlg(ROTATION);
-  const targetCorner = rotatedSolved.patternData["CORNERS"].pieces[4];
-  const targetEdge = rotatedSolved.patternData["EDGES"].pieces[8];
+  // Piece state AFTER the inverse alg (no z2 — z2 is visual-only in the player)
+  const state = solved.applyAlg(inverseAlg);
+  const cornerPieces = state.patternData["CORNERS"].pieces;
+  const edgePieces = state.patternData["EDGES"].pieces;
 
-  // Find where those pieces are in the full setup state (rotation + inverse alg)
-  const setupState = solved.applyAlg(setupAlg);
-  const cornerPieces = setupState.patternData["CORNERS"].pieces;
-  const edgePieces = setupState.patternData["EDGES"].pieces;
+  // Find current positions of the pair pieces and each cross edge
+  const findCorner = (piece: number) => {
+    for (let i = 0; i < 8; i++) if (cornerPieces[i] === piece) return i;
+    return -1;
+  };
+  const findEdge = (piece: number) => {
+    for (let i = 0; i < 12; i++) if (edgePieces[i] === piece) return i;
+    return -1;
+  };
 
-  let frCornerPos = -1;
-  for (let i = 0; i < 8; i++) {
-    if (cornerPieces[i] === targetCorner) { frCornerPos = i; break; }
-  }
-  let frEdgePos = -1;
-  for (let i = 0; i < 12; i++) {
-    if (edgePieces[i] === targetEdge) { frEdgePos = i; break; }
-  }
+  const pairCornerPos = findCorner(PAIR_CORNER_PIECE);
+  const pairEdgePos = findEdge(PAIR_EDGE_PIECE);
+  const crossEdgePositions = new Set(CROSS_EDGE_PIECES.map(findEdge));
 
-  // Cross edges (D-layer positions 4–7) + the displaced FR edge
-  const highlightedEdges = new Set([4, 5, 6, 7, frEdgePos]);
-  const highlightedCorners = new Set([frCornerPos]);
+  const regularEdges = new Set([...crossEdgePositions, pairEdgePos]);
+  const regularCorners = new Set([pairCornerPos]);
 
   return {
     orbits: {
       EDGES: {
         pieces: Array.from({ length: 12 }, (_, i) => ({
-          facelets: highlightedEdges.has(i) ? [reg, reg] : [ign, ign],
+          facelets: regularEdges.has(i) ? [reg, reg] : [ign, ign],
         })),
       },
       CORNERS: {
         pieces: Array.from({ length: 8 }, (_, i) => ({
-          facelets: highlightedCorners.has(i) ? [reg, reg, reg] : [ign, ign, ign],
+          facelets: regularCorners.has(i) ? [reg, reg, reg] : [ign, ign, ign],
         })),
       },
       CENTERS: {
         pieces: Array.from({ length: 6 }, () => ({
-          facelets: [reg, reg, reg, reg],
+          facelets: [dim, dim, dim, dim],
         })),
       },
     },
@@ -90,12 +108,12 @@ export function F2LCaseViewer({ caseName, moves = [] }: F2LCaseViewerProps) {
 
     let cancelled = false;
 
-    // z2 puts white on D, green on F. Then the inverse alg sets up the case.
     const inverseAlg = new Alg(caseDefinition.algorithm).invert().toString();
+    // z2 is applied by TwistyPlayer as a visual flip; inverseAlg sets up the case.
     const setupAlg = `${ROTATION} ${inverseAlg}`;
 
     (async () => {
-      const mask = await computeF2LMask(setupAlg);
+      const mask = await computeF2LMask(inverseAlg);
       if (cancelled) return;
 
       const player = new TwistyPlayer({
