@@ -12,33 +12,35 @@ interface F2LCaseViewerProps {
 /**
  * Stickering mask for F2L case display.
  *
- * Highlights the FR slot pair (corner + edge), 4 cross edges, and all centers.
- * Everything else is gray ("ignored").
+ * The setup alg includes x2 to orient white cross on D. Because the mask
+ * operates on piece identity (solved-state index), indices must reflect the
+ * pieces that occupy the target positions AFTER x2:
  *
- * Piece indices (3x3x3 cubing.js convention):
- *   EDGES (12 pieces, 2 facelets each):
- *     4=DF, 5=DR, 6=DB, 7=DL (cross edges), 8=FR (target edge)
- *   CORNERS (8 pieces, 3 facelets each):
- *     4=DFR (target corner)
- *   CENTERS (6 pieces, 4 facelets each):
- *     All regular (provide orientation context)
+ *   After x2, D-layer edge positions contain solved pieces 0,1,2,3 (cross).
+ *   After x2, DFR corner position contains solved piece 1.
+ *   After x2, FR edge position contains solved piece 10.
  */
 const reg = "regular" as const;
 const ign = "ignored" as const;
+
+// Piece indices that land at cross/FR positions after x2
+const CROSS_EDGE_PIECES = new Set([0, 1, 2, 3]);
+const FR_EDGE_PIECE = 10;
+const DFR_CORNER_PIECE = 1;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const F2L_STICKERING_MASK: any = {
   orbits: {
     EDGES: {
       pieces: Array.from({ length: 12 }, (_, i) => ({
-        facelets: [4, 5, 6, 7, 8].includes(i)
+        facelets: CROSS_EDGE_PIECES.has(i) || i === FR_EDGE_PIECE
           ? [reg, reg]
           : [ign, ign],
       })),
     },
     CORNERS: {
       pieces: Array.from({ length: 8 }, (_, i) => ({
-        facelets: i === 4
+        facelets: i === DFR_CORNER_PIECE
           ? [reg, reg, reg]
           : [ign, ign, ign],
       })),
@@ -54,6 +56,7 @@ const F2L_STICKERING_MASK: any = {
 export function F2LCaseViewer({ caseName, moves = [] }: F2LCaseViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<TwistyPlayer | null>(null);
+  const fedCountRef = useRef(0);
 
   // Create player when case changes
   useEffect(() => {
@@ -84,6 +87,7 @@ export function F2LCaseViewer({ caseName, moves = [] }: F2LCaseViewerProps) {
     player.experimentalDragInput = "none";
 
     playerRef.current = player;
+    fedCountRef.current = 0;
     container.appendChild(player);
 
     return () => {
@@ -94,11 +98,19 @@ export function F2LCaseViewer({ caseName, moves = [] }: F2LCaseViewerProps) {
     };
   }, [caseName]);
 
-  // Update displayed moves when they change
+  // Feed new moves incrementally for responsive visualization
   useEffect(() => {
     const player = playerRef.current;
     if (!player) return;
-    player.alg = moves.join(" ");
+
+    const newMoves = moves.slice(fedCountRef.current);
+    for (const move of newMoves) {
+      player.experimentalAddMove(move);
+    }
+    if (newMoves.length > 0) {
+      player.jumpToEnd();
+    }
+    fedCountRef.current = moves.length;
   }, [moves]);
 
   return <div ref={containerRef} className="inline-block" />;
