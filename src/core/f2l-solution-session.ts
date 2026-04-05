@@ -3,6 +3,7 @@ import type { KPattern, KPuzzle } from "cubing/kpuzzle";
 import { cube3x3x3 } from "cubing/puzzles";
 import { buildFaceGeometry, isCrossSolved, type FaceGeometry } from "./cfop-segmenter";
 import { F2L_CASES, type F2LCaseDefinition } from "./f2l-cases";
+import { conjugateAlgByZ2 } from "./move-utils";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -242,9 +243,15 @@ export class F2LSolutionSession {
     const { kpuzzle, geometry } = await getAssets();
     const solved = kpuzzle.defaultPattern();
 
-    // Apply inverse of the canonical algorithm to get the case state
+    // The user holds the cube yellow-up (z2-flipped from cubing.js's native
+    // white-up frame). When they execute the stored algorithm in their frame,
+    // the GAN cube reports z2-conjugated moves (R↔L, U↔D swapped). So the
+    // scramble must be the conjugate of inverse(algorithm) — that way the
+    // user's conjugated alg cancels it and brings the physical state back to
+    // solved, which passes the FR-slot + D-cross completion checks.
     const inverseAlg = new Alg(caseDef.algorithm).invert().toString();
-    const caseState = solved.applyAlg(inverseAlg);
+    const conjugatedInverseAlg = conjugateAlgByZ2(inverseAlg);
+    const caseState = solved.applyAlg(conjugatedInverseAlg);
 
     // Guard: skip if the setup results in an already-solved FR slot + cross
     if (isFRSlotSolved(caseState, geometry) && isCrossSolved(caseState, geometry, CROSS_FACE_IDX)) {

@@ -3,6 +3,7 @@ import { useRef, useEffect } from "react";
 import { TwistyPlayer } from "cubing/twisty";
 import { Alg } from "cubing/alg";
 import { F2L_CASES } from "@/core/f2l-cases";
+import { conjugateMoveByZ2, conjugateAlgByZ2 } from "@/core/move-utils";
 
 interface F2LCaseViewerProps {
   caseName: string; // e.g. "F2L #1"
@@ -23,9 +24,7 @@ const dim = "dim" as const;
  * in the cube's native frame) must be conjugated by z2 before they're fed
  * to the player — otherwise turning the yellow face on the physical cube
  * would visually rotate the white (bottom) layer on screen. Conjugation
- * swaps R↔L and U↔D; F and B are unchanged. The session-layer solve
- * detection keeps working in the native frame and doesn't need this
- * transform.
+ * swaps R↔L and U↔D; F and B are unchanged.
  *
  * cubing.js's stickering mask is indexed by PIECE IDENTITY (piece N = the
  * piece that starts at position N in the solved state). The mask follows
@@ -66,25 +65,6 @@ const F2L_MASK = {
   },
 };
 
-// Conjugation by z2: z2·X·z2 swaps R↔L and U↔D; F and B map to themselves.
-// Direction (prime) and amount (2) are preserved.
-const Z2_FACE_MAP: Record<string, string> = {
-  R: "L",
-  L: "R",
-  U: "D",
-  D: "U",
-  F: "F",
-  B: "B",
-};
-
-function conjugateMoveByZ2(move: string): string {
-  // Match a face letter followed by optional modifier (', 2, 2')
-  const match = /^([RLUDFB])(['2]*)$/.exec(move);
-  if (!match) return move; // wide moves, rotations, etc. — pass through
-  const [, face, suffix] = match;
-  return (Z2_FACE_MAP[face] ?? face) + suffix;
-}
-
 export function F2LCaseViewer({ caseName, moves = [] }: F2LCaseViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<TwistyPlayer | null>(null);
@@ -98,10 +78,13 @@ export function F2LCaseViewer({ caseName, moves = [] }: F2LCaseViewerProps) {
     if (!caseDefinition) return;
 
     const inverseAlg = new Alg(caseDefinition.algorithm).invert().toString();
-    // Scramble first, THEN apply z2 so that the viewer state equals
-    // (physical state) · z2. After user's conjugated alg is applied, the
-    // viewer will land on solved · z2 = the white-on-D solved display.
-    const setupAlg = `${inverseAlg} ${ROTATION}`;
+    // The user holds the cube yellow-up (z2-flipped). GAN reports moves
+    // z2-conjugated from the stored algorithm, so the physical scramble is
+    // conj(inverseAlg). Apply z2 at the end so the viewer state equals
+    // (physical state) · z2. After user's alg is applied, the viewer lands
+    // on solved · z2 — the white-on-D solved display.
+    const conjugatedInverseAlg = conjugateAlgByZ2(inverseAlg);
+    const setupAlg = `${conjugatedInverseAlg} ${ROTATION}`;
 
     const player = new TwistyPlayer({
       puzzle: "3x3x3",

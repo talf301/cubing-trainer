@@ -38,6 +38,31 @@ export function buildMoveString(face: string, amount: number): string {
 }
 
 /**
+ * Conjugate a single face move by z2: z2 · X · z2 swaps R↔L and U↔D;
+ * F and B are unchanged (z2 is a rotation around the F-B axis). Wide
+ * moves (r, l, u, d) follow the same rule. Direction (') and double (2)
+ * modifiers are preserved.
+ */
+const Z2_FACE_MAP: Record<string, string> = {
+  R: "L", L: "R", U: "D", D: "U", F: "F", B: "B",
+  r: "l", l: "r", u: "d", d: "u", f: "f", b: "b",
+};
+
+export function conjugateMoveByZ2(move: string): string {
+  const match = /^([RLUDFBrludfb])(['2]*)$/.exec(move);
+  if (!match) return move; // rotations, slices (M/E/S), etc. — pass through
+  const [, face, suffix] = match;
+  return (Z2_FACE_MAP[face] ?? face) + suffix;
+}
+
+/**
+ * Apply z2 conjugation to every token in an algorithm string (space-separated).
+ */
+export function conjugateAlgByZ2(alg: string): string {
+  return alg.split(" ").map(conjugateMoveByZ2).join(" ");
+}
+
+/**
  * Collapse consecutive same-face moves into combined notation.
  * e.g. ["R", "R"] → ["R2"], ["R", "R", "R"] → ["R'"], ["U", "U'"] → []
  */
