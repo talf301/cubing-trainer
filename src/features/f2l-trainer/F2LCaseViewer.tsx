@@ -14,26 +14,34 @@ const ign = "ignored" as const;
 const dim = "dim" as const;
 
 /**
- * We keep the cube in its native cubing.js orientation (U=white, D=yellow,
- * F=green, R=red) so bluetooth moves from the physical cube apply 1:1 to
- * the virtual state — no rotation-induced piece permutation. The trainer
- * therefore practices F2L with a YELLOW cross on D (pieces 4-7) and the
- * FR pair as the yellow/green/red corner + green/red edge. The camera is
- * tilted below the equator so the D face (yellow) and FR slot face the
- * user.
+ * The viewer shows the cube rotated by z2 so the user sees the familiar
+ * speedcuber orientation: yellow on top, white cross on D. cubing.js's
+ * native frame has U=white / D=yellow; applying z2 in the setup flips that
+ * visually while also swapping L↔R (so virtual R face shows orange).
+ *
+ * Because z2 permutes piece state, physical bluetooth moves (which arrive
+ * in the cube's native frame) must be conjugated by z2 before they're fed
+ * to the player — otherwise turning the yellow face on the physical cube
+ * would visually rotate the white (bottom) layer on screen. Conjugation
+ * swaps R↔L and U↔D; F and B are unchanged. The session-layer solve
+ * detection keeps working in the native frame and doesn't need this
+ * transform.
  *
  * cubing.js's stickering mask is indexed by PIECE IDENTITY (piece N = the
  * piece that starts at position N in the solved state). The mask follows
  * each piece wherever it moves, so the highlighted pieces are the same for
  * every F2L case.
  *
- *   - Cross edges = pieces 4, 5, 6, 7 (DF, DR, DB, DL — yellow edges)
- *   - Pair corner = piece 4 (DFR = yellow/green/red)
- *   - Pair edge = piece 8 (FR = green/red)
+ * For white cross on D (after z2 swaps U↔D, L↔R):
+ *   - Cross edges = pieces 0, 1, 2, 3 (UF, UR, UB, UL — white edges that
+ *     z2 maps onto the D layer)
+ *   - Pair corner = piece 3 (UFL = white/green/orange, lands at DFR)
+ *   - Pair edge = piece 9 (FL = green/orange, lands at FR)
  */
-const PAIR_CORNER_PIECE = 4;
-const PAIR_EDGE_PIECE = 8;
-const CROSS_EDGE_PIECES = [4, 5, 6, 7];
+const ROTATION = "z2";
+const PAIR_CORNER_PIECE = 3;
+const PAIR_EDGE_PIECE = 9;
+const CROSS_EDGE_PIECES = [0, 1, 2, 3];
 
 const regularEdgePieces = new Set([...CROSS_EDGE_PIECES, PAIR_EDGE_PIECE]);
 const regularCornerPieces = new Set([PAIR_CORNER_PIECE]);
@@ -58,6 +66,25 @@ const F2L_MASK = {
   },
 };
 
+// Conjugation by z2: z2·X·z2 swaps R↔L and U↔D; F and B map to themselves.
+// Direction (prime) and amount (2) are preserved.
+const Z2_FACE_MAP: Record<string, string> = {
+  R: "L",
+  L: "R",
+  U: "D",
+  D: "U",
+  F: "F",
+  B: "B",
+};
+
+function conjugateMoveByZ2(move: string): string {
+  // Match a face letter followed by optional modifier (', 2, 2')
+  const match = /^([RLUDFB])(['2]*)$/.exec(move);
+  if (!match) return move; // wide moves, rotations, etc. — pass through
+  const [, face, suffix] = match;
+  return (Z2_FACE_MAP[face] ?? face) + suffix;
+}
+
 export function F2LCaseViewer({ caseName, moves = [] }: F2LCaseViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<TwistyPlayer | null>(null);
@@ -71,20 +98,21 @@ export function F2LCaseViewer({ caseName, moves = [] }: F2LCaseViewerProps) {
     if (!caseDefinition) return;
 
     const inverseAlg = new Alg(caseDefinition.algorithm).invert().toString();
+    // Scramble first, THEN apply z2 so that the viewer state equals
+    // (physical state) · z2. After user's conjugated alg is applied, the
+    // viewer will land on solved · z2 = the white-on-D solved display.
+    const setupAlg = `${inverseAlg} ${ROTATION}`;
 
     const player = new TwistyPlayer({
       puzzle: "3x3x3",
       visualization: "3D",
       controlPanel: "none",
-      experimentalSetupAlg: inverseAlg,
+      experimentalSetupAlg: setupAlg,
       experimentalStickeringMaskOrbits: F2L_MASK,
     });
 
-    // Below-equator view: look up at the D (yellow) face so the FR slot
-    // (where the pair inserts) is pointed at the camera.
-    player.cameraLatitudeLimit = 90;
     player.cameraLongitude = -30;
-    player.cameraLatitude = -31;
+    player.cameraLatitude = 31;
     player.experimentalDragInput = "none";
 
     playerRef.current = player;
@@ -106,7 +134,7 @@ export function F2LCaseViewer({ caseName, moves = [] }: F2LCaseViewerProps) {
 
     const newMoves = moves.slice(fedCountRef.current);
     for (const move of newMoves) {
-      player.experimentalAddMove(move);
+      player.experimentalAddMove(conjugateMoveByZ2(move));
     }
     if (newMoves.length > 0) {
       player.jumpToEnd();
