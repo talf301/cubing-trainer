@@ -17,6 +17,7 @@ export interface F2LSolutionState {
   phase: F2LSessionPhase;
   caseName: string | null;
   casePattern: KPattern | null;
+  caseKey: number;
   moves: string[];
   timerMs: number;
   result: F2LAttemptResult | null;
@@ -62,6 +63,7 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
   const [phase, setPhase] = useState<F2LSessionPhase>("idle");
   const [caseName, setCaseName] = useState<string | null>(null);
   const [casePattern, setCasePattern] = useState<KPattern | null>(null);
+  const [caseKey, setCaseKey] = useState(0);
   const [moves, setMoves] = useState<string[]>([]);
   const [timerMs, setTimerMs] = useState(0);
   const [result, setResult] = useState<F2LAttemptResult | null>(null);
@@ -90,6 +92,7 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
     await session.presentCase(nextCase);
     setCaseName(session.currentCase?.name ?? null);
     setCasePattern(session.caseState);
+    setCaseKey((k) => k + 1);
     setMoves([]);
     setTimerMs(0);
     setResult(null);
@@ -193,11 +196,12 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
     await session.retry();
     setCaseName(session.currentCase?.name ?? null);
     setCasePattern(session.caseState);
+    setCaseKey((k) => k + 1);
     setMoves([]);
     setTimerMs(0);
     setResult(null);
     setHintAlgorithm(lastResult?.canonicalAlgorithm ?? null);
   }, [stopTimer]);
 
-  return { phase, caseName, casePattern, moves, timerMs, result, hintAlgorithm, skip, next, retry };
+  return { phase, caseName, casePattern, caseKey, moves, timerMs, result, hintAlgorithm, skip, next, retry };
 }
