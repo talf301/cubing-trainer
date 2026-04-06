@@ -7,6 +7,7 @@ import {
   type LLPracticeCompletion,
 } from "@/core/ll-practice-session";
 import type { ScrambleTrackerState } from "@/core/scramble-tracker";
+import { useScrambleTracking } from "@/hooks/use-scramble-tracking";
 import { generateLLScramble, warmupSolver } from "@/core/ll-scramble";
 import {
   LLPracticeStore,
@@ -31,9 +32,6 @@ export function useLLPractice(connection: CubeConnection): LLPracticeState {
   const sessionRef = useRef(new LLPracticeSession());
   const [phase, setPhase] = useState<LLPracticePhase>("idle");
   const [scramble, setScramble] = useState("");
-  const [trackerState, setTrackerState] = useState<ScrambleTrackerState | null>(
-    null,
-  );
   const [displayMs, setDisplayMs] = useState(0);
   const [lastCompletion, setLastCompletion] =
     useState<LLPracticeCompletion | null>(null);
@@ -44,9 +42,11 @@ export function useLLPractice(connection: CubeConnection): LLPracticeState {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const solveStartWallRef = useRef(0);
   const lastTotalRef = useRef(0);
-  // GAN cubes replay buffered moves on connect; ignore moves arriving
-  // within this window after the session starts.
-  const trackerReadyAtRef = useRef(0);
+
+  const { trackerState, feedMove } = useScrambleTracking(
+    connection,
+    phase === "scrambling" ? scramble : null,
+  );
 
   // Warm up solver on mount
   useEffect(() => {
@@ -61,7 +61,6 @@ export function useLLPractice(connection: CubeConnection): LLPracticeState {
     setDisplayMs(lastTotalRef.current);
 
     sessionRef.current.start(result.scramble, result.expectedState);
-    trackerReadyAtRef.current = Date.now() + 500;
   }, []);
 
   // Auto-generate scramble on connect
@@ -108,20 +107,12 @@ export function useLLPractice(connection: CubeConnection): LLPracticeState {
     const onPhase = (newPhase: LLPracticePhase) => {
       setPhase(newPhase);
 
-      // Update tracker state from session
-      setTrackerState(session.scrambleTrackerState);
-
       if (newPhase === "solving_oll") {
         // OLL phase starts — begin wall-clock timer
         solveStartWallRef.current = Date.now();
         timerRef.current = setInterval(() => {
           setDisplayMs(Date.now() - solveStartWallRef.current);
         }, 10);
-      }
-
-      if (newPhase === "solving_pll") {
-        // Clear tracker state when done scrambling
-        setTrackerState(null);
       }
 
       if (newPhase === "done") {
@@ -180,25 +171,17 @@ export function useLLPractice(connection: CubeConnection): LLPracticeState {
     const onMove = (event: CubeMoveEvent) => {
       const moveStr = event.move.toString();
 
-      // Skip moves arriving during the post-connect buffer flush window
-      if (
-        session.currentPhase === "scrambling" &&
-        Date.now() < trackerReadyAtRef.current
-      ) {
-        return;
-      }
-
       session.onMove(moveStr, event.timestamp, event.state);
 
-      // Keep tracker state in sync during scrambling
+      // Feed move to scramble tracker during scrambling phase
       if (session.currentPhase === "scrambling") {
-        setTrackerState(session.scrambleTrackerState);
+        feedMove(moveStr);
       }
     };
 
     connection.addMoveListener(onMove);
     return () => connection.removeMoveListener(onMove);
-  }, [connection]);
+  }, [connection, feedMove]);
 
   return {
     phase,
