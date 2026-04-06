@@ -94,7 +94,7 @@ export function F2LCaseViewer({ caseName, moves = [] }: F2LCaseViewerProps) {
       experimentalStickeringMaskOrbits: F2L_MASK,
     });
 
-    player.cameraLongitude = -30;
+    player.cameraLongitude = 30;
     player.cameraLatitude = 31;
     player.experimentalDragInput = "none";
 

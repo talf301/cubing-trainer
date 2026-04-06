@@ -48,50 +48,52 @@ export interface F2LSolutionStoreInterface {
 
 // ─── FR Slot checking ────────────────────────────────────────────────
 
-const CROSS_FACE_IDX = 5; // D face
+const CROSS_FACE_IDX = 0; // U face (white) in cubing.js native frame
 
 /**
- * Check if the FR slot (front-right) corner and edge are in their home
- * positions with correct orientation. Cross face = D.
+ * Check if the FL slot (front-left in native frame) corner and edge are in
+ * their home positions with correct orientation. This corresponds to the
+ * user's FR slot after z2 conjugation (z2 swaps R↔L, U↔D).
  *
- * FR corner is the corner shared by D, F, R faces.
- * FR edge is the equator edge shared by F, R faces.
+ * Cross face = U (white in native frame = user's D/bottom).
+ * FL corner is the corner shared by U, F, L faces.
+ * FL edge is the equator edge shared by F, L faces.
  */
-function isFRSlotSolved(pattern: KPattern, geometry: FaceGeometry): boolean {
-  // FR corner: intersection of D-face corners and F-face corners and R-face corners
-  const dCorners = new Set(geometry.faceCorners[CROSS_FACE_IDX]); // D=5
+function isTargetSlotSolved(pattern: KPattern, geometry: FaceGeometry): boolean {
+  // FL corner: intersection of U-face corners, F-face corners, and L-face corners
+  const uCorners = new Set(geometry.faceCorners[CROSS_FACE_IDX]); // U=0
   const fCorners = new Set(geometry.faceCorners[2]); // F=2
-  const rCorners = new Set(geometry.faceCorners[3]); // R=3
+  const lCorners = new Set(geometry.faceCorners[1]); // L=1
 
-  let frCornerPos = -1;
-  for (const pos of dCorners) {
-    if (fCorners.has(pos) && rCorners.has(pos)) {
-      frCornerPos = pos;
+  let flCornerPos = -1;
+  for (const pos of uCorners) {
+    if (fCorners.has(pos) && lCorners.has(pos)) {
+      flCornerPos = pos;
       break;
     }
   }
 
   const corners = pattern.patternData["CORNERS"];
-  if (corners.pieces[frCornerPos] !== frCornerPos || corners.orientation[frCornerPos] !== 0) {
+  if (corners.pieces[flCornerPos] !== flCornerPos || corners.orientation[flCornerPos] !== 0) {
     return false;
   }
 
-  // FR edge: equator edge at intersection of F and R faces, not on D or U
+  // FL edge: equator edge at intersection of F and L faces, not on U or D
   const uEdges = new Set(geometry.faceEdges[0]); // U=0
-  const dEdges = new Set(geometry.faceEdges[CROSS_FACE_IDX]);
+  const dEdges = new Set(geometry.faceEdges[5]); // D=5
   const fEdges = new Set(geometry.faceEdges[2]);
-  const rEdges = new Set(geometry.faceEdges[3]);
+  const lEdges = new Set(geometry.faceEdges[1]);
 
-  let frEdgePos = -1;
+  let flEdgePos = -1;
   for (const pos of fEdges) {
-    if (rEdges.has(pos) && !dEdges.has(pos) && !uEdges.has(pos)) {
-      frEdgePos = pos;
+    if (lEdges.has(pos) && !uEdges.has(pos) && !dEdges.has(pos)) {
+      flEdgePos = pos;
       break;
     }
   }
 
   const edges = pattern.patternData["EDGES"];
-  if (edges.pieces[frEdgePos] !== frEdgePos || edges.orientation[frEdgePos] !== 0) {
+  if (edges.pieces[flEdgePos] !== flEdgePos || edges.orientation[flEdgePos] !== 0) {
     return false;
   }
 
@@ -254,7 +256,7 @@ export class F2LSolutionSession {
     const caseState = solved.applyAlg(conjugatedInverseAlg);
 
     // Guard: skip if the setup results in an already-solved FR slot + cross
-    if (isFRSlotSolved(caseState, geometry) && isCrossSolved(caseState, geometry, CROSS_FACE_IDX)) {
+    if (isTargetSlotSolved(caseState, geometry) && isCrossSolved(caseState, geometry, CROSS_FACE_IDX)) {
       return;
     }
 
@@ -288,7 +290,7 @@ export class F2LSolutionSession {
 
     // Check if FR slot is solved AND cross is still intact
     const { geometry } = await getAssets();
-    if (isFRSlotSolved(this._caseState, geometry) && isCrossSolved(this._caseState, geometry, CROSS_FACE_IDX)) {
+    if (isTargetSlotSolved(this._caseState, geometry) && isCrossSolved(this._caseState, geometry, CROSS_FACE_IDX)) {
       this._solveEndTime = timestamp;
       await this.completeSolve();
     }
