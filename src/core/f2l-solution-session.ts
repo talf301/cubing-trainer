@@ -309,6 +309,20 @@ export class F2LSolutionSession {
   }
 
   /**
+   * Re-present the current case. Available during presenting, solving,
+   * or review phases. Resets move count and timer without changing the case.
+   */
+  async retry(): Promise<void> {
+    const caseName = this._currentCase?.name;
+    if (!caseName) return;
+    if (this._phase !== "presenting" && this._phase !== "solving" && this._phase !== "review") return;
+    this.clearAutoAdvance();
+    // Force back to idle so presentCase accepts the transition
+    this._phase = "idle";
+    await this.presentCase(caseName);
+  }
+
+  /**
    * Advance from review to idle. Used when auto-advance doesn't apply
    * (suboptimal solve) or to manually advance past auto-advance.
    */

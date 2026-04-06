@@ -3,6 +3,7 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
+import { copyFileSync } from "fs";
 
 /**
  * Vite plugin: guard Vite's modulepreload helper for worker contexts.
@@ -41,9 +42,25 @@ function workerSafeChunks(): Plugin {
   };
 }
 
+/**
+ * GitHub Pages serves 404.html for unknown paths. Copying index.html
+ * to 404.html lets the SPA handle client-side routes on hard refresh.
+ */
+function githubPagesSpa(): Plugin {
+  return {
+    name: "github-pages-spa",
+    closeBundle() {
+      const outDir = path.resolve(__dirname, "dist");
+      const src = path.resolve(outDir, "index.html");
+      const dest = path.resolve(outDir, "404.html");
+      copyFileSync(src, dest);
+    },
+  };
+}
+
 export default defineConfig({
   base: "/cubing-trainer/",
-  plugins: [react(), tailwindcss(), workerSafeChunks()],
+  plugins: [react(), tailwindcss(), workerSafeChunks(), githubPagesSpa()],
   build: {
     target: "esnext",
     // Disable the inline modulepreload polyfill. It uses document.createElement

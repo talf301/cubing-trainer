@@ -20,8 +20,10 @@ export interface F2LSolutionState {
   moves: string[];
   timerMs: number;
   result: F2LAttemptResult | null;
+  hintAlgorithm: string | null;
   skip: () => void;
   next: () => void;
+  retry: () => void;
 }
 
 /**
@@ -63,6 +65,7 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
   const [moves, setMoves] = useState<string[]>([]);
   const [timerMs, setTimerMs] = useState(0);
   const [result, setResult] = useState<F2LAttemptResult | null>(null);
+  const [hintAlgorithm, setHintAlgorithm] = useState<string | null>(null);
 
   // Timer management
   const startTimer = useCallback((timestamp: number) => {
@@ -90,6 +93,7 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
     setMoves([]);
     setTimerMs(0);
     setResult(null);
+    setHintAlgorithm(null);
   }, []);
 
   // Load attempt history on mount, then present first case
@@ -182,5 +186,18 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
     sessionRef.current.next();
   }, []);
 
-  return { phase, caseName, casePattern, moves, timerMs, result, skip, next };
+  const retry = useCallback(async () => {
+    const session = sessionRef.current;
+    const lastResult = session.lastResult;
+    stopTimer();
+    await session.retry();
+    setCaseName(session.currentCase?.name ?? null);
+    setCasePattern(session.caseState);
+    setMoves([]);
+    setTimerMs(0);
+    setResult(null);
+    setHintAlgorithm(lastResult?.canonicalAlgorithm ?? null);
+  }, [stopTimer]);
+
+  return { phase, caseName, casePattern, moves, timerMs, result, hintAlgorithm, skip, next, retry };
 }

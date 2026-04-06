@@ -21,7 +21,7 @@ function formatTime(ms: number): string {
 
 export function F2LSolutionPage({ connection }: F2LSolutionPageProps) {
   const { status, error, connect } = useCubeConnection(connection);
-  const { phase, caseName, moves, timerMs, result, skip, next } =
+  const { phase, caseName, moves, timerMs, result, hintAlgorithm, skip, next, retry } =
     useF2LSolution(connection);
 
   const isConnected = status === "connected";
@@ -65,6 +65,13 @@ export function F2LSolutionPage({ connection }: F2LSolutionPageProps) {
       {/* Main content when connected */}
       {isConnected && (
         <>
+          {/* Hint algorithm (shown during retry) */}
+          {hintAlgorithm && phase !== "review" && (
+            <p className="px-4 text-center font-mono text-sm text-yellow-400">
+              {hintAlgorithm}
+            </p>
+          )}
+
           {/* 3D model — takes up available space */}
           <div className="flex flex-1 items-center justify-center">
             {caseName ? (
@@ -104,20 +111,36 @@ export function F2LSolutionPage({ connection }: F2LSolutionPageProps) {
           {/* Action buttons */}
           <div className="flex justify-center gap-4 px-4 py-4">
             {(phase === "presenting" || phase === "solving") && (
-              <button
-                onClick={skip}
-                className="rounded bg-gray-700 px-6 py-2 text-gray-300 hover:bg-gray-600"
-              >
-                Skip
-              </button>
+              <>
+                <button
+                  onClick={retry}
+                  className="rounded bg-gray-700 px-6 py-2 text-gray-300 hover:bg-gray-600"
+                >
+                  Reset
+                </button>
+                <button
+                  onClick={skip}
+                  className="rounded bg-gray-700 px-6 py-2 text-gray-300 hover:bg-gray-600"
+                >
+                  Skip
+                </button>
+              </>
             )}
             {phase === "review" && (
-              <button
-                onClick={next}
-                className="rounded bg-blue-600 px-6 py-2 font-medium hover:bg-blue-500"
-              >
-                Next
-              </button>
+              <div className="flex gap-4">
+                <button
+                  onClick={retry}
+                  className="rounded bg-gray-700 px-6 py-2 text-gray-300 hover:bg-gray-600"
+                >
+                  Retry
+                </button>
+                <button
+                  onClick={next}
+                  className="rounded bg-blue-600 px-6 py-2 font-medium hover:bg-blue-500"
+                >
+                  Next
+                </button>
+              </div>
             )}
           </div>
         </>
