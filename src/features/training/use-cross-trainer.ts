@@ -6,28 +6,24 @@ import {
   type CrossTrainerPhase,
   type CrossTrainerResult,
 } from "@/core/cross-trainer-session";
-import {
-  ScrambleTracker,
-  type ScrambleTrackerState,
-} from "@/core/scramble-tracker";
+import { useScrambleTracking } from "@/hooks/use-scramble-tracking";
 import { generateScramble } from "@/lib/scramble";
 import { cube3x3x3 } from "cubing/puzzles";
 
 export function useCrossTrainer(connection: CubeConnection) {
   const sessionRef = useRef(new CrossTrainerSession());
-  const trackerRef = useRef<ScrambleTracker | null>(null);
   const [phase, setPhase] = useState<CrossTrainerPhase>("idle");
   const [scramble, setScramble] = useState<string>("");
   const [displayMs, setDisplayMs] = useState(0);
-  const [trackerState, setTrackerState] =
-    useState<ScrambleTrackerState | null>(null);
   const [result, setResult] = useState<CrossTrainerResult | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const solveStartWallRef = useRef(0);
   const lastSolveDurationRef = useRef(0);
-  // GAN cubes replay buffered moves on connect; ignore moves arriving
-  // within this window after the tracker is created.
-  const trackerReadyAtRef = useRef(0);
+
+  const { trackerState, feedMove } = useScrambleTracking(
+    connection,
+    phase === "scrambling" ? scramble : null,
+  );
 
   const startNewScramble = useCallback(async () => {
     setResult(null);
@@ -36,13 +32,6 @@ export function useCrossTrainer(connection: CubeConnection) {
       cube3x3x3.kpuzzle(),
     ]);
     setScramble(scrambleResult.scramble);
-
-    // Create a new ScrambleTracker for this scramble.
-    const tracker = new ScrambleTracker(scrambleResult.scramble);
-    trackerRef.current = tracker;
-    trackerReadyAtRef.current = Date.now() + 500;
-    setTrackerState(tracker.state);
-    tracker.addStateListener(setTrackerState);
 
     // Show previous solve time during scrambling
     setDisplayMs(lastSolveDurationRef.current);
@@ -80,12 +69,6 @@ export function useCrossTrainer(connection: CubeConnection) {
       setPhase(newPhase);
 
       if (newPhase === "ready") {
-        // Clean up tracker
-        if (trackerRef.current) {
-          trackerRef.current.removeStateListener(setTrackerState);
-          trackerRef.current = null;
-          setTrackerState(null);
-        }
         // Show 0 while waiting to solve
         setDisplayMs(0);
       }
@@ -128,11 +111,7 @@ export function useCrossTrainer(connection: CubeConnection) {
       const moveStr = event.move.toString();
 
       if (session.phase === "scrambling") {
-        // Feed move to tracker for progress display.
-        // Skip moves arriving during the post-connect buffer flush window.
-        if (trackerRef.current && Date.now() >= trackerReadyAtRef.current) {
-          trackerRef.current.onMove(moveStr);
-        }
+        feedMove(moveStr);
         // Check if scramble state matches
         session.onCubeState(event.state);
       } else if (session.phase === "ready" || session.phase === "solving") {
@@ -142,7 +121,7 @@ export function useCrossTrainer(connection: CubeConnection) {
 
     connection.addMoveListener(onMove);
     return () => connection.removeMoveListener(onMove);
-  }, [connection]);
+  }, [connection, feedMove]);
 
   const nextScramble = useCallback(() => {
     sessionRef.current.reset();
