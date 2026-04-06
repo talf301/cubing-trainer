@@ -8,7 +8,6 @@ import {
   type FaceGeometry,
 } from "./cfop-segmenter";
 import { recognizeOLL, recognizePLL } from "./case-recognizer";
-import { ScrambleTracker } from "./scramble-tracker";
 
 /** Cross face is always D for LL practice */
 const CROSS_FACE_IDX = 5;
@@ -87,7 +86,6 @@ export class LLPracticeSession {
   private initialized = false;
 
   // Scramble tracking
-  private scrambleTracker: ScrambleTracker | null = null;
   private expectedState: KPattern | null = null;
 
   // OLL phase tracking
@@ -124,16 +122,11 @@ export class LLPracticeSession {
     return this.phase;
   }
 
-  get scrambleTrackerState() {
-    return this.scrambleTracker?.state ?? null;
-  }
-
   /**
    * Start a new practice cycle with the given scramble.
    * Transitions from idle/done to scrambling.
    */
-  start(scramble: string, expectedState: KPattern): void {
-    this.scrambleTracker = new ScrambleTracker(scramble);
+  start(_scramble: string, expectedState: KPattern): void {
     this.expectedState = expectedState;
     this.resetPhaseTracking();
     this.setPhase("scrambling");
@@ -164,16 +157,14 @@ export class LLPracticeSession {
   }
 
   private handleScrambling(
-    move: string,
+    _move: string,
     timestamp: number,
-    _stateAfterMove: KPattern,
+    stateAfterMove: KPattern,
     _geometry: FaceGeometry,
   ): void {
-    if (!this.scrambleTracker || !this.expectedState) return;
+    if (!this.expectedState) return;
 
-    this.scrambleTracker.onMove(move);
-
-    if (this.scrambleTracker.state.isComplete) {
+    if (stateAfterMove.isIdentical(this.expectedState)) {
       // Scramble is done — transition to solving_oll
       // The expected state has F2L solved with an unsolved LL
       this.ollSegmentStart = timestamp;
@@ -372,7 +363,6 @@ export class LLPracticeSession {
 
   reset(): void {
     this.phase = "idle";
-    this.scrambleTracker = null;
     this.expectedState = null;
     this.resetPhaseTracking();
   }

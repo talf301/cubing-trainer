@@ -239,18 +239,7 @@ describe("LLPracticeSession", () => {
   });
 
   describe("scramble tracking", () => {
-    it("tracks scramble moves via ScrambleTracker", async () => {
-      const session = new LLPracticeSession();
-      const { scramble, expectedState } = buildLLState("OLL 21", "T");
-      session.start(scramble, expectedState);
-
-      const trackerState = session.scrambleTrackerState;
-      expect(trackerState).not.toBeNull();
-      expect(trackerState!.isComplete).toBe(false);
-      expect(trackerState!.mode).toBe("tracking");
-    });
-
-    it("transitions to solving_oll when scramble is complete", async () => {
+    it("transitions to solving_oll when cube matches expected state", async () => {
       const session = new LLPracticeSession();
       const { scramble, expectedState } = buildLLState("OLL 21", "T");
       session.start(scramble, expectedState);
@@ -429,14 +418,14 @@ describe("LLPracticeSession", () => {
       expect(session.currentPhase).toBe("idle");
     });
 
-    it("clears scramble tracker", () => {
+    it("resets expected state on reset", () => {
       const session = new LLPracticeSession();
       const { scramble, expectedState } = buildLLState("OLL 21", "T");
       session.start(scramble, expectedState);
-      expect(session.scrambleTrackerState).not.toBeNull();
+      expect(session.currentPhase).toBe("scrambling");
 
       session.reset();
-      expect(session.scrambleTrackerState).toBeNull();
+      expect(session.currentPhase).toBe("idle");
     });
 
     it("allows starting new cycle after reset", async () => {
