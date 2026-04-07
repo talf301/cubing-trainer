@@ -77,7 +77,7 @@ export function F2LCaseViewer({ caseName, moves = [] }: F2LCaseViewerProps) {
     const caseDefinition = F2L_CASES.find((c) => c.name === caseName);
     if (!caseDefinition) return;
 
-    const inverseAlg = new Alg(caseDefinition.algorithm).invert().toString();
+    const inverseAlg = new Alg(caseDefinition.algorithms[0]).invert().toString();
     // The user holds the cube yellow-up (z2-flipped). GAN reports moves
     // z2-conjugated from the stored algorithm, so the physical scramble is
     // conj(inverseAlg). Apply z2 at the end so the viewer state equals

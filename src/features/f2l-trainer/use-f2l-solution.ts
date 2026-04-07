@@ -200,7 +200,7 @@ export function useF2LSolution(connection: CubeConnection): F2LSolutionState {
     setMoves([]);
     setTimerMs(0);
     setResult(null);
-    setHintAlgorithm(lastResult?.canonicalAlgorithm ?? null);
+    setHintAlgorithm(lastResult?.algorithms[0] ?? null);
   }, [stopTimer]);
 
   return { phase, caseName, casePattern, caseKey, moves, timerMs, result, hintAlgorithm, skip, next, retry };

@@ -95,15 +95,21 @@ export function F2LSolutionPage({ connection }: F2LSolutionPageProps) {
                     <span className="ml-2 text-green-400">Optimal</span>
                   ) : (
                     <span className="ml-2 text-yellow-400">
-                      (optimal: {result.canonicalMoveCount})
+                      (optimal: {result.shortestMoveCount})
                     </span>
                   )}
                 </p>
-                {!result.optimal && (
-                  <p className="font-mono text-sm text-gray-400">
-                    {result.canonicalAlgorithm}
-                  </p>
-                )}
+                <div className="mt-2 space-y-1">
+                  {result.algorithms.map((alg, i) => {
+                    const moveCount = alg.trim().split(/\s+/).length;
+                    return (
+                      <p key={i} className="font-mono text-sm text-gray-400">
+                        <span className="mr-2 text-gray-500">{moveCount}</span>
+                        {alg}
+                      </p>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

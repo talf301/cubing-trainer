@@ -12,7 +12,7 @@ const store = new F2LSolutionStore();
 
 /** Canonical move count for each case (space-separated moves). */
 const OPTIMAL_MOVES = new Map(
-  F2L_CASES.map((c) => [c.name, c.algorithm.split(/\s+/).length]),
+  F2L_CASES.map((c) => [c.name, Math.min(...c.algorithms.map((a) => a.split(/\s+/).length))]),
 );
 
 interface CaseStats {

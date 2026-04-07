@@ -13,9 +13,9 @@ export interface F2LAttemptResult {
   caseName: string;
   time: number; // ms
   moveCount: number;
-  optimal: boolean; // moveCount <= canonical algorithm move count
-  canonicalMoveCount: number;
-  canonicalAlgorithm: string;
+  optimal: boolean; // moveCount <= shortest algorithm move count
+  shortestMoveCount: number;
+  algorithms: string[];
 }
 
 export type F2LPhaseListener = (phase: F2LSessionPhase) => void;
@@ -251,7 +251,7 @@ export class F2LSolutionSession {
     // scramble must be the conjugate of inverse(algorithm) — that way the
     // user's conjugated alg cancels it and brings the physical state back to
     // solved, which passes the FR-slot + D-cross completion checks.
-    const inverseAlg = new Alg(caseDef.algorithm).invert().toString();
+    const inverseAlg = new Alg(caseDef.algorithms[0]).invert().toString();
     const conjugatedInverseAlg = conjugateAlgByZ2(inverseAlg);
     const caseState = solved.applyAlg(conjugatedInverseAlg);
 
@@ -369,16 +369,16 @@ export class F2LSolutionSession {
   private async completeSolve(): Promise<void> {
     const caseDef = this._currentCase!;
     const time = this._solveEndTime - this._solveStartTime;
-    const canonicalMoveCount = countAlgMoves(caseDef.algorithm);
-    const optimal = this._moveCount <= canonicalMoveCount;
+    const shortestMoveCount = Math.min(...caseDef.algorithms.map(countAlgMoves));
+    const optimal = this._moveCount <= shortestMoveCount;
 
     const result: F2LAttemptResult = {
       caseName: caseDef.name,
       time,
       moveCount: this._moveCount,
       optimal,
-      canonicalMoveCount,
-      canonicalAlgorithm: caseDef.algorithm,
+      shortestMoveCount,
+      algorithms: caseDef.algorithms,
     };
     this._lastResult = result;
 
