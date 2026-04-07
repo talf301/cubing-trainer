@@ -99,9 +99,26 @@ describe("generateLLScramble", () => {
 
     const result = await generateLLScramble();
 
-    // The scramble should be the inverse of what the solver returned
-    const expectedScramble = solverResult.invert().toString();
+    // The scramble should be the inverse of what the solver returned,
+    // with X2' normalized to X2
+    const expectedScramble = solverResult.invert().toString().replace(/(\w)2'/g, "$12");
     expect(result.scramble).toBe(expectedScramble);
+  });
+
+  it("normalizes X2' to X2 in scramble string", async () => {
+    const { experimentalSolve3x3x3IgnoringCenters } = await import(
+      "cubing/search"
+    );
+    // Solver returns alg with a double move; its inverse would contain R2'
+    vi.mocked(experimentalSolve3x3x3IgnoringCenters).mockResolvedValue(
+      new Alg("R2 U F'"),
+    );
+
+    const result = await generateLLScramble();
+
+    // cubing.js invert() produces "F U' R2'" — we normalize to "F U' R2"
+    expect(result.scramble).toBe("F U' R2");
+    expect(result.scramble).not.toContain("2'");
   });
 
   it("expectedState matches applying scramble to solved", async () => {

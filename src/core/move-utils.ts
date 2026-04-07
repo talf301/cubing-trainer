@@ -25,7 +25,7 @@ export function normalizeAmount(amount: number): number {
 }
 
 export function isDoubleMove(moveStr: string): boolean {
-  return moveStr.endsWith("2");
+  return moveStr.includes("2");
 }
 
 export function isQuarterTurnOf(doubleMove: string, move: string): boolean {

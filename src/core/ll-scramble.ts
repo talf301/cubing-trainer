@@ -47,7 +47,9 @@ export async function generateLLScramble(): Promise<LLScrambleResult> {
 
   // Scramble is the inverse of the solution
   const scrambleAlg = solution.invert();
-  const scramble = scrambleAlg.toString();
+  // cubing.js represents inverted double moves as "R2'" but R2' ≡ R2;
+  // normalize to "R2" so the scramble tracker and GAN cube notation match.
+  const scramble = scrambleAlg.toString().replace(/(\w)2'/g, "$12");
 
   // The expected state after applying scramble to solved cube
   const expectedState = solved.applyAlg(scrambleAlg);
