@@ -1,7 +1,16 @@
 // src/features/pll-trainer/PllRecognizeView.tsx
-import { CornerView } from "./CornerView";
+import { useState } from "react";
+import { PllCaseViewer, type VisibleSides } from "./PllCaseViewer";
 import { OverheadPllDiagram } from "./OverheadPllDiagram";
 import type { usePllRecognitionTrainer } from "./usePllRecognitionTrainer";
+
+const STORAGE_KEY = "pll-recognition-visible-sides";
+
+function loadVisibleSides(): VisibleSides {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored === "2" || stored === "3" || stored === "4") return Number(stored) as VisibleSides;
+  return 2;
+}
 
 interface PllRecognizeViewProps {
   trainer: ReturnType<typeof usePllRecognitionTrainer>;
@@ -14,9 +23,10 @@ function formatTime(ms: number): string {
 export function PllRecognizeView({ trainer }: PllRecognizeViewProps) {
   const {
     phase,
-    stickers,
     options,
     currentCase,
+    auf,
+    corner,
     answerGiven,
     correct,
     recognitionTime,
@@ -26,10 +36,20 @@ export function PllRecognizeView({ trainer }: PllRecognizeViewProps) {
     next,
   } = trainer;
 
+  const [visibleSides, setVisibleSides] = useState<VisibleSides>(loadVisibleSides);
+
+  function changeVisibleSides(n: VisibleSides) {
+    setVisibleSides(n);
+    localStorage.setItem(STORAGE_KEY, String(n));
+  }
+
   // Idle phase
   if (phase === "idle") {
     return (
-      <div className="text-center">
+      <div className="space-y-6 text-center">
+        {/* Visible sides selector */}
+        <SidesSelector value={visibleSides} onChange={changeVisibleSides} />
+
         <button
           onClick={start}
           className="rounded bg-green-600 px-6 py-3 text-lg font-medium hover:bg-green-500"
@@ -40,13 +60,21 @@ export function PllRecognizeView({ trainer }: PllRecognizeViewProps) {
     );
   }
 
-  // Presenting phase: large CornerView + 3x2 answer grid
+  // Presenting phase: 3D cube viewer + answer grid
   if (phase === "presenting") {
     return (
       <div className="space-y-8 text-center">
-        {/* Large corner view */}
+        {/* 3D cube viewer */}
         <div className="flex justify-center">
-          <CornerView stickers={stickers} size={240} />
+          {currentCase && (
+            <PllCaseViewer
+              caseName={currentCase}
+              auf={auf}
+              corner={corner}
+              visibleSides={visibleSides}
+              size={240}
+            />
+          )}
         </div>
 
         {/* 3x2 answer grid */}
@@ -65,7 +93,7 @@ export function PllRecognizeView({ trainer }: PllRecognizeViewProps) {
     );
   }
 
-  // Review phase: correct/wrong indicator + case name + OverheadPllDiagram + Next
+  // Review phase
   return (
     <div className="space-y-6 text-center">
       {/* Correct / Wrong indicator */}
@@ -111,6 +139,33 @@ export function PllRecognizeView({ trainer }: PllRecognizeViewProps) {
           Next
         </button>
       )}
+    </div>
+  );
+}
+
+function SidesSelector({
+  value,
+  onChange,
+}: {
+  value: VisibleSides;
+  onChange: (n: VisibleSides) => void;
+}) {
+  return (
+    <div className="flex items-center justify-center gap-3">
+      <span className="text-sm text-gray-400">Visible sides</span>
+      {([2, 3, 4] as VisibleSides[]).map((n) => (
+        <button
+          key={n}
+          onClick={() => onChange(n)}
+          className={`rounded px-3 py-1 text-sm font-medium transition ${
+            n === value
+              ? "bg-blue-600 text-white"
+              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+          }`}
+        >
+          {n}
+        </button>
+      ))}
     </div>
   );
 }

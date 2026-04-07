@@ -8,6 +8,7 @@ import { PllRecognitionStatsStore } from "@/lib/pll-recognition-stats-store";
 import { PllRecognitionCaseSelector } from "@/core/pll-recognition-case-selector";
 import { PllStickerCache } from "@/core/pll-sticker-cache";
 import type { Color as FaceColor } from "@/core/pll-sticker-cache";
+import type { ViewingCorner, AUF } from "@/core/pll-sticker-cache";
 import type {
   Color as VisualColor,
   OverheadStickers as VisualOverheadStickers,
@@ -46,6 +47,8 @@ export function usePllRecognitionTrainer() {
   const [stickers, setStickers] = useState<VisualColor[]>([]);
   const [options, setOptions] = useState<string[]>([]);
   const [currentCase, setCurrentCase] = useState<string | null>(null);
+  const [auf, setAuf] = useState<AUF>("");
+  const [corner, setCorner] = useState<ViewingCorner>(0);
   const [answerGiven, setAnswerGiven] = useState<string | null>(null);
   const [correct, setCorrect] = useState(false);
   const [recognitionTime, setRecognitionTime] = useState(0);
@@ -70,6 +73,8 @@ export function usePllRecognitionTrainer() {
         setOptions(allOptions);
 
         setCurrentCase(session.currentCase);
+        setAuf(session.auf);
+        setCorner(session.corner);
         setAnswerGiven(null);
         setCorrect(false);
         setRecognitionTime(0);
@@ -157,6 +162,8 @@ export function usePllRecognitionTrainer() {
     stickers,
     options,
     currentCase,
+    auf,
+    corner,
     answerGiven,
     correct,
     recognitionTime,
